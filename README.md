@@ -27,7 +27,7 @@ cd src/Example
 lean -c example.c example.lean
 ```
 
-The command will produce the c file such as [example.c](https://github.com/sallywang147/LeanFunFix/edit/main/README.md)
+The command will produce the c file such as [example.c](https://github.com/sallywang147/LeanFunFix/blob/main/src/Example/example.c)
 
 To compile the extracted c code and produce a binary called example, where leanc is a lean4 developed wrapper around clang. More on Leanc [here](https://github.com/leanprover/lean4/blob/master/src/Leanc.lean)
 ```
