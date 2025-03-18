@@ -1,0 +1,48 @@
+{"log":
+ [{"message":
+   ".> LEAN_PATH=././.lake/build/lib DYLD_LIBRARY_PATH= /Users/sallywang/.elan/toolchains/leanprover--lean4---v4.17.0/bin/lean ././././Main.lean -R ./././. -o ././.lake/build/lib/Main.olean -i ././.lake/build/lib/Main.ilean -c ././.lake/build/ir/Main.c --json",
+   "level": "trace"},
+  {"message":
+   "././././Main.lean:19:16: unused variable `b`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"},
+  {"message":
+   "././././Main.lean:22:30: unused variable `x`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"},
+  {"message":
+   "././././Main.lean:22:32: unused variable `y`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"},
+  {"message": "././././Main.lean:25:0: sameTypeCheck 3 5 : Unit",
+   "level": "info"},
+  {"message": "././././Main.lean:31:0: fun x => x + 7 : Nat → Nat",
+   "level": "info"},
+  {"message": "././././Main.lean:32:0: 14", "level": "info"},
+  {"message": "././././Main.lean:44:0: 14", "level": "info"},
+  {"message":
+   "././././Main.lean:51:0: \"The sum of 3 and 4 is 7 and we have a proof that 7 = 3 + 4.\"",
+   "level": "info"},
+  {"message": "././././Main.lean:167:4: declaration uses 'sorry'",
+   "level": "warning"},
+  {"message": "././././Main.lean:168:4: declaration uses 'sorry'",
+   "level": "warning"},
+  {"message": "././././Main.lean:169:4: declaration uses 'sorry'",
+   "level": "warning"},
+  {"message": "././././Main.lean:170:4: declaration uses 'sorry'",
+   "level": "warning"},
+  {"message": "././././Main.lean:171:4: declaration uses 'sorry'",
+   "level": "warning"},
+  {"message":
+   "././././Main.lean:243:6: unused variable `o`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"},
+  {"message":
+   "././././Main.lean:247:6: unused variable `e`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"},
+  {"message":
+   "././././Main.lean:252:6: unused variable `a`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"},
+  {"message":
+   "././././Main.lean:253:6: unused variable `s`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"},
+  {"message":
+   "././././Main.lean:258:6: unused variable `a`\nnote: this linter can be disabled with `set_option linter.unusedVariables false`",
+   "level": "warning"}],
+ "depHash": "9125159232717372762"}

@@ -1,0 +1,5 @@
+{"log":
+ [{"message":
+   ".> LEAN_PATH=././.lake/build/lib DYLD_LIBRARY_PATH= /Users/sallywang/.elan/toolchains/leanprover--lean4---v4.17.0/bin/lean ././././Checker.lean -R ./././. -o ././.lake/build/lib/Checker.olean -i ././.lake/build/lib/Checker.ilean -c ././.lake/build/ir/Checker.c --json",
+   "level": "trace"}],
+ "depHash": "172286140283249150"}
