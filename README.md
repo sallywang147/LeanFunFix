@@ -20,7 +20,7 @@ The command will produce the following output:
 
 ### Extract C code from a Lean program and run extracted C code
 
-**Note**: C code extracted from contains all lean functions, but not #eval statements. 
+**Note**: C code extracted from Lean programs contains all lean functions, but not #eval statements. 
 
 ```
 cd src/Example
