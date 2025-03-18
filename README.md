@@ -71,7 +71,7 @@ lake build
 cd src/.lake/build/ir
 ```
 
-If you want to compile run the Main.c from lake extracted C code [here] (https://github.com/sallywang147/LeanFunFix/tree/main/src/.lake/build/ir): 
+If you want to compile run the Main.c from lake extracted C code [here](https://github.com/sallywang147/LeanFunFix/tree/main/src/.lake/build/ir): 
 
 ```
 leanc Main.c Checker/Basic.c Checker.c -o Main
