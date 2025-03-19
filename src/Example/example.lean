@@ -7,5 +7,5 @@ def checkNumber (num:  UInt8): Bool :=
 #eval checkNumber 7
 #eval checkNumber 42
 
-def main : IO Unit := do
-  IO.println "Tests completed."
+-- def main : IO Unit := do
+-- IO.println "Tests completed."
