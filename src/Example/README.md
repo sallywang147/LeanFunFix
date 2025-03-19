@@ -12,7 +12,7 @@ The wrong way: use lean compiler generated wasm file
 ## Two Ways to Generate Wasm/Wat Files
 
 ### Fisrt Way
-1. use clang with the following flags, library file linkers,  and sysroot steup
+1. We can use clang with the following flags, library file linkers,  and sysroot steup. Btw, 
 $home is the directory where you have .elan stored. In our case, it's /Users/sallywang. 
 
    ```
