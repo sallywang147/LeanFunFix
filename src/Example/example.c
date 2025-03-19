@@ -1,11 +1,10 @@
 // Lean compiler output
 // Module: example
 // Imports: Init
-#include "lean/lean.h"
+#include <lean/lean.h>
 #if defined(__clang__)
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #pragma clang diagnostic ignored "-Wunused-label"
-
 #elif defined(__GNUC__) && !defined(__CLANG__)
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-label"
@@ -25,7 +24,7 @@ LEAN_EXPORT uint8_t l_checkNumber(uint8_t);
 LEAN_EXPORT uint8_t l_checkNumber(uint8_t x_1) {
 _start:
 {
-uint8_t x_2; uint8_t x_3;
+uint8_t x_2; uint8_t x_3; 
 x_2 = 42;
 x_3 = lean_uint8_dec_eq(x_1, x_2);
 return x_3;
@@ -34,7 +33,7 @@ return x_3;
 LEAN_EXPORT lean_object* l_checkNumber___boxed(lean_object* x_1) {
 _start:
 {
-uint8_t x_2; uint8_t x_3; lean_object* x_4;
+uint8_t x_2; uint8_t x_3; lean_object* x_4; 
 x_2 = lean_unbox(x_1);
 lean_dec(x_1);
 x_3 = l_checkNumber(x_2);
@@ -45,7 +44,7 @@ return x_4;
 LEAN_EXPORT lean_object* l_IO_println___at_main___spec__1(lean_object* x_1, lean_object* x_2) {
 _start:
 {
-uint32_t x_3; lean_object* x_4; lean_object* x_5;
+uint32_t x_3; lean_object* x_4; lean_object* x_5; 
 x_3 = 10;
 x_4 = lean_string_push(x_1, x_3);
 x_5 = l_IO_print___at_IO_println___spec__1(x_4, x_2);
@@ -55,15 +54,15 @@ return x_5;
 static lean_object* _init_l_main___closed__1() {
 _start:
 {
-lean_object* x_1;
-x_1 = lean_mk_string_unchecked("Tests completed.", 16, 16);
+lean_object* x_1; 
+x_1 = lean_mk_string_unchecked("Done.", 5, 5);
 return x_1;
 }
 }
 LEAN_EXPORT lean_object* _lean_main(lean_object* x_1) {
 _start:
 {
-lean_object* x_2; lean_object* x_3;
+lean_object* x_2; lean_object* x_3; 
 x_2 = l_main___closed__1;
 x_3 = l_IO_println___at_main___spec__1(x_2, x_1);
 return x_3;
