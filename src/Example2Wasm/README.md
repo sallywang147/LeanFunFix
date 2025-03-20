@@ -1,4 +1,4 @@
-# Automatically Extracting Lean_Wasm32 Files and Compiling Into Wasm/js Files
+# Automatically Extracting Lean_Wasm32 Files From Lean Release and Compiling Into Wasm/js Files
 
 ### File Structure
 
