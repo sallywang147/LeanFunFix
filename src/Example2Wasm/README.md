@@ -23,3 +23,6 @@ Once compiled, you can run `node .lake/build/wasm/main.js` to run the program li
 The [lake/build/wasm/main.js](https://github.com/sallywang147/LeanFunFix/blob/main/src/Example2Wasm/.lake/build/wasm/main.js) file will link headers from other lean wasm modules 
 
 Likewise, we also have C files generated accordingly in the [.lake/build/ir](https://github.com/sallywang147/LeanFunFix/tree/main/src/Example2Wasm/.lake/build/ir) folder. 
+
+### TODO
+add code comments to each line and each file 
