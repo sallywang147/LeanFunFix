@@ -13,7 +13,7 @@
 
 1. Run `lake build test` to build the test program.
 2. Run `lake build` to build the utility.
-3. Run `lake exe example2wasm will compile the Main program and generate a main.js and main.wasm files in [.lake/build/wasm](https://github.com/sallywang147/LeanFunFix/tree/main/src/Example2Wasm/.lake/build/wasm) folder
+3. Run `lake exe example2wasm` will compile the Main program and generate a main.js and main.wasm files in [.lake/build/wasm](https://github.com/sallywang147/LeanFunFix/tree/main/src/Example2Wasm/.lake/build/wasm) folder
 
 Once compiled, you can run `node .lake/build/wasm/main.js` to run the program like below: 
 
