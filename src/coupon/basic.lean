@@ -16,6 +16,10 @@ theorem y_ne_z : y ≠ z := by
   decide
 
 /-
+The following proofs require mathLib, not the above
+-/
+
+/-
 Proposition 1: For all natural numbers x and y, if x = 5 and y = 5 then x = y.
 This captures the uniqueness of the numeral 5.
 -/
@@ -57,8 +61,6 @@ by
   -- Since hx : x = 5, substituting x with 5 in eq_xz gives:
   rw [hx] at eq_xz  
   rw [hz] at eq_xz                -- Now eq_xz becomes 5 = z.
-  -- rw [eq_xz] at hz                    -- Rewriting z as 5 in our assumption hz, we get 5 = 6.
-  -- By the standard successor property, we have 5 < 6.
   have lt : 5 < 6 := Nat.lt_succ_self 5
   -- Rewriting 5 = 6 using hz, we derive 6 < 6, which contradicts irreflexivity.
   rw[eq_xz] at lt
