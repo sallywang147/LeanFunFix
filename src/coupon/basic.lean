@@ -1,3 +1,5 @@
+-- since we use MathLib, we should use IDE here: https://live.lean-lang.org/#codez=JYWwDg9gTgLgBAWQIYwBYBtgCMB0ARFJHAJQFMl0cAhJAZ2AGMAoJgWlbj1IfSSlLhoBDCADtaMJKJi0mAE1IAzOAA84ALjgBVAJLSAHBoC8cAKzylcAJ4btemIfUm1cV+zgBlCKrgmrF5QAvW10DYzgANhZ3AAUoCAhFTRtAAyI4YLRgWjgsuDB4rCQsdBsYBMEoYAA3YAo4JiFoUhBrAH1RUlbg5Lg07pMsfzcOLVFFCHQ5OAVFYFFgGGAxWk0Ad2EpOABXMYmpqr5a4tJaABo4RR2GReXzrC34UQh4MD5FusvRa6XxJmH61w7caTazpVR/ODuAByEFWORgAHJsqZepFzrRvAAZciiOAMTYKBjABSCVBZCGE4mkFgAelYTDiEEg9BuuIAjJoAGLQOAUdBwUQoLZQOqiLYgLCkKDZNRSKZWc7AZRqEwouWg1Wk0i4lXWHBMAAqZOy+LAMGFJy123mAEcttqTtlElaxSApXVTPrWDSmOhmiAkNbgHaHbRaK1Eq0UQBvNQ2TSAVEIAL5wAAUqDUml1pgAlGnUPGNWY81nfKCnExBnAoHCANoZ84FgC6tPpjOZCx+cAATFyeXyBUKRfzXZLpapzgreaIpoFFcqyzZ1TYTBlUNqfKv9UbcrkhBUpCzqgsbM7SHaKCevT6/SAAwfxK1z3BY6DunBk/mVIXdVY8+mrHfFd0hLTcwQrKsazgetv0bQCWyYOkmBhOF1jyeIqgENAUHhJEBWePIIDDbA/UEbxUCQTCzDLCIcHqBl4mdKkkHUJg2TogBBMNxQEVNxigPExBgEU5EYVk82w+AURMWimG7OiAHUBAAayeOEq33CQ5T4KZ8iZKUYFPZRBXNYcBXFMdskk6jcj9MNSU2BZsloLYGAYR1oEVHBSDolEAB5In1ABmOiyFWSpFlEABzK05nPLZL0M7Z6Giq06Bc8BWWomTzjQ1YIC2EEotIeAIjgALZIAFjojw5nc/DB1M0ULKlHJsjsqyKNxJzSHQZRU2AKB+EUP0VGPJLnT8nNcoEfgkAYVBeUE6QRLEn5ryYUgVCQcBSM0AAatNpMiEsBiGHIVvI1xrpu267uu9x0p47LIguHkRBWpBRO+MQIQoqjUFadB4E0fzXqcRqcGB1oXLcmHeuUUxzkhDgUVsx0HNxMrUw09c4Fh9ywx5PSwAMv8ISgxacMB4Hkfu+mHo4fhws7VK1WyMqouqS0yoqiEtvmx4UChmBWkG4b+TKmn4Hu9xede3dwCI+hjnxuqBGBtqciGpRRu5oA
+
 import Mathlib.Data.Real.Basic
 
 -- Declare the constants
@@ -37,7 +39,7 @@ Proof idea:
 4. Since no natural number is less than itself (irreflexivity of <), we reach a contradiction.
 -/
 example : ¬ (5 = 6) := by
-  intro h,                         -- assume 5 = 6 for contradiction
-  have h_lt : 5 < 6 := nat.lt_succ_self 5,  -- 5 is less than 6 (by the successor property)
-  rw h at h_lt,                    -- rewriting 5 as 6 gives 6 < 6
-  exact nat.lt_irrefl 6 h_lt        -- 6 < 6 is impossible since lt is irreflexive
+  intro h                       -- assume 5 = 6 for contradiction
+  have h_lt : 5 < 6 := Nat.lt_succ_self 5  -- 5 is less than 6 (by the successor property)
+  rw [h] at h_lt                    -- rewriting 5 as 6 gives 6 < 6
+  exact Nat.lt_irrefl 6 h_lt        -- 6 < 6 is impossible since lt is irreflexive
