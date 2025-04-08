@@ -43,3 +43,23 @@ example : ¬ (5 = 6) := by
   have h_lt : 5 < 6 := Nat.lt_succ_self 5  -- 5 is less than 6 (by the successor property)
   rw [h] at h_lt                    -- rewriting 5 as 6 gives 6 < 6
   exact Nat.lt_irrefl 6 h_lt        -- 6 < 6 is impossible since lt is irreflexive
+
+
+/-
+Another way to go about it: we prove that it's not possible for z = 6 if x= 5, y = 5 and y = z
+-/
+
+theorem prove_five_ne_six {x y z : ℕ} (hx : x = 5) (hy : y = 5) (hyz : y = z) : ¬ (z = 6) :=
+by
+  intro hz                            -- Assume, for contradiction, that z = 6.
+  have eq_xy : x = y := uniqueness_of_5 hx hy  -- From x = 5 and y = 5, we conclude x = y.
+  have eq_xz : x = z := trans_eq eq_xy hyz      -- From x = y and y = z, we conclude x = z.
+  -- Since hx : x = 5, substituting x with 5 in eq_xz gives:
+  rw [hx] at eq_xz  
+  rw [hz] at eq_xz                -- Now eq_xz becomes 5 = z.
+  -- rw [eq_xz] at hz                    -- Rewriting z as 5 in our assumption hz, we get 5 = 6.
+  -- By the standard successor property, we have 5 < 6.
+  have lt : 5 < 6 := Nat.lt_succ_self 5
+  -- Rewriting 5 = 6 using hz, we derive 6 < 6, which contradicts irreflexivity.
+  rw[eq_xz] at lt
+  exact Nat.lt_irrefl 6 lt            -- This is the contradiction, since no number is less than itself.
