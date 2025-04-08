@@ -1,24 +1,6 @@
 def checkNumber (num:  UInt8): Bool :=
   if num == 42 then true else false
 
--- Tag structure similar to a C-style struct
-structure TaggedInput where
-  value : UInt8
-  tag : String 
-  message   : String
-deriving Repr
-
--- A simple tagger function: returns a tag based on checkNumber
-def assignTag (num : UInt8) : TaggedInput :=
-  if checkNumber num then
-    { value := num, tag := "tag_42",  message := "Passed" }  -- all passing inputs share this tag
-  else
-    { value := num, tag := "tag_other", message := "NotPassed" }
-
--- Check if two tagged inputs are equivalent (i.e., share a tag)
-def EquivalnceTag (t1 t2 : TaggedInput) : Bool :=
-  t1.tag == t2.tag && t1.message == t2.message
-
 -- Theorem 1: checkNumber returns true for input 42
 theorem checkNumber_eq_true : checkNumber 42 = true := by
   unfold checkNumber
