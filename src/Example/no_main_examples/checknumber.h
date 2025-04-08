@@ -1,4 +1,3 @@
-#include "lean_checknumber.c"
 #include <lean/lean.h>
 #include <stdint.h>
 
