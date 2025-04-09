@@ -2,7 +2,7 @@
 structure Tag where
   lhs : UInt8
   rhs : UInt8
-deriving Repr, DecidableEq  -- automatically generate instances
+deriving Repr -- automatically generate instances when we have Repr
 
 def Identity(x: UInt8) : Tag :=
   {lhs := x, rhs := x}
@@ -17,15 +17,17 @@ def Transitivity (t1 t2 : Tag) : Option Tag :=
   else
     none
 
-
-inductive Derivable : Tag → Prop
+-- a logic predicate: a tag is derivable
+-- derivable(x) holds iff we can build a derivation of x using the rules/funcs you define
+inductive Derivable : Tag → Prop --dependent type: tag as input, proposition as output
 | identity (x : UInt8) : Derivable (Identity x)
 | symmetry (t : Tag) (h : Derivable t) : Derivable (Symmetry t)
 | transitivity (t u : Tag) (ht : Derivable t) (hu : Derivable u) (h_eq : t.rhs = u.lhs) :
     Derivable { lhs := t.lhs, rhs := u.rhs }
   
-open Derivable
-theorem derivable_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
+
+--goal: t.lhs = t.rhs
+theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
   by
     intros t h
     induction h with
@@ -34,7 +36,14 @@ theorem derivable_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
     | symmetry t' h' IH =>
         simp [Symmetry] at *
         exact IH
+    --IHt:  h_eq: t.rhs = u.lhs
+    --h_eq: t.rhs = u.lhs
+    --IHu: u.lhs = u.rhs
     | transitivity t u ht hu h_eq IHt IHu =>
+        --goal: t.lhs = t.rhs
+        --rewrite goal by IHt first: t.lhs = u.lhs
+        --rewrite goal by h_eq: u.lhs = u.lhs
+        --rewrite goal by IHu: u.lhs = u.rhs
         rw [IHt, h_eq, IHu]
 
 
@@ -44,8 +53,8 @@ theorem derivable_tag_eq_impossible {x y y' : UInt8}
     (h2 : Derivable ⟨x, y'⟩)
     (h_ne : y ≠ y') : False :=
   by
-    have h_eq1 := derivable_invariant ⟨x, y⟩ h1
-    have h_eq2 := derivable_invariant ⟨x, y'⟩ h2
+    have h_eq1 := equivalence_invariant ⟨x, y⟩ h1
+    have h_eq2 := equivalence_invariant ⟨x, y'⟩ h2
     rw [h_eq1] at h_eq2
     contradiction
 
