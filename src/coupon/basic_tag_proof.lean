@@ -8,7 +8,7 @@ def Identity(x: UInt8) : Tag :=
   {lhs := x, rhs := x}
 
 def Symmetry(t: Tag) : Tag :=
-  {lhs := t.lhs, rhs := t.rhs}
+  {lhs := t.rhs, rhs := t.lhs}
 
 
 def Transitivity (t1 t2 : Tag) : Option Tag :=
@@ -17,6 +17,9 @@ def Transitivity (t1 t2 : Tag) : Option Tag :=
   else
     none
 
+-- evilTag cannot exist: all tags should be derivable; NOT if a tag is derivable, then we do stuff
+def evilTag(x: UInt8): Tag := 
+  {lhs := x, rhs := 52}
 /-
 https://leanprover.github.io/theorem_proving_in_lean4/inductive_types.html
 In Lean's library, 
@@ -43,7 +46,7 @@ theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
         simp [Identity]
     | symmetry t' h' IH =>
         simp [Symmetry] at *
-        exact IH
+        exact (Eq.symm IH)
     --IHt:  h_eq: t.rhs = u.lhs
     --h_eq: t.rhs = u.lhs
     --IHu: u.lhs = u.rhs
