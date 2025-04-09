@@ -26,6 +26,8 @@ theorem no_match_with_z (x y z : UInt8) (hxy : x = y) (hzx : z ≠ x) : ¬(x = z
       -- ← tells Lean to reverse the equality 
       rw [←hxy] at hyz  -- turns hyz : y = z into x = z
       exact hyz
+    -- Eq.symm also reverse the equation  ← just revises the hypothesis: a=b becomes b=a
+    -- Eq.symm produces anew proof
     exact hzx (Eq.symm h')  -- now h' : x = z -> flip to z = x
 
 
