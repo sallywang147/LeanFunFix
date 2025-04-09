@@ -32,6 +32,7 @@ theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
     intros t h
     induction h with
     | identity x =>
+        -- simp: it unfolds the defition, simplify goals etc, but it doesn't do case split or induction
         simp [Identity]
     | symmetry t' h' IH =>
         simp [Symmetry] at *
@@ -57,9 +58,3 @@ theorem derivable_tag_eq_impossible {x y y' : UInt8}
     have h_eq2 := equivalence_invariant ⟨x, y'⟩ h2
     rw [h_eq1] at h_eq2
     contradiction
-
-    /-
-       x
-      ------------
-      tag(x, x)
-    -/

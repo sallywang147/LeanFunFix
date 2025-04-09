@@ -8,18 +8,24 @@ variable (hxy : x = y)
 variable (hzx : z ≠ x)
 
 -- rule: if  x = y ∧ z ≠ x, x = z ∨ y = z is not possible
-theorem no_match_with_z (x y z : UInt8) (hxy : x = y) (hzx : z ≠ x) : ¬ (x = z ∨ y = z) := by
+/- trivial fun fact: how does lean4 interpret ¬(...)? 
+Lean define negation as: ¬P  :=  P -> False
+So we actually have (...) -> false, in our case (x = z ∨ y = z) -> False
+When we write intro h: assume h : x = z ∨ y = z, and now my goal is to derive False
+-/
+theorem no_match_with_z (x y z : UInt8) (hxy : x = y) (hzx : z ≠ x) : ¬(x = z ∨ y = z) := by
   intro h
   cases h with
   | inl hxz => -- inl: insert left ffor the Or (disjunction) type
-    -- Case: x = z → contradiction with z ≠ x
+    -- Case: x = z -> contradiction with z ≠ x
     exact hzx (Eq.symm hxz)
   | inr hyz =>
     -- We want to go from y = z to x = z using x = y
     -- So turn x = y into y = x and rewrite in hyz
     have h' : x = z := by
+      -- ← tells Lean to reverse the equality 
       rw [←hxy] at hyz  -- turns hyz : y = z into x = z
       exact hyz
-    exact hzx (Eq.symm h')  -- now h' : x = z → flip to z = x
+    exact hzx (Eq.symm h')  -- now h' : x = z -> flip to z = x
 
 
