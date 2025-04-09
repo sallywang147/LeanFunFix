@@ -1,4 +1,4 @@
--- structure: 
+-- structure: https://lean-lang.org/doc/reference/latest/Type-Classes/Deriving-Instances/
 structure Tag where
   lhs : UInt8
   rhs : UInt8
@@ -17,7 +17,7 @@ def Transitivity (t1 t2 : Tag) : Option Tag :=
   else
     none
 
--- a logic predicate: a tag is derivable
+-- a logic predicate: a tag is derivable. a derivable is a custom inductive type we define
 -- derivable(x) holds iff we can build a derivation of x using the rules/funcs you define
 inductive Derivable : Tag → Prop --dependent type: tag as input, proposition as output
 | identity (x : UInt8) : Derivable (Identity x)
