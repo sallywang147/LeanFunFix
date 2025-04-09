@@ -7,11 +7,7 @@ variable (z : UInt8)
 variable (hxy : x = y)
 variable (hzx : z ≠ x)
 
--- Theorem 1: x = y ∧ z ≠ x (just restating assumptions)
-theorem assumptions_hold : x = y ∧ z ≠ x := by
-  exact ⟨hxy, hzx⟩
-
--- Theorem 2: x = z ∨ y = z is not possible
+-- rule: if  x = y ∧ z ≠ x, x = z ∨ y = z is not possible
 theorem no_match_with_z (x y z : UInt8) (hxy : x = y) (hzx : z ≠ x) : ¬ (x = z ∨ y = z) := by
   intro h
   cases h with

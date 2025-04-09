@@ -48,3 +48,9 @@ theorem derivable_tag_eq_impossible {x y y' : UInt8}
     have h_eq2 := derivable_invariant ⟨x, y'⟩ h2
     rw [h_eq1] at h_eq2
     contradiction
+
+    /-
+       x
+      ------------
+      tag(x, x)
+    -/
