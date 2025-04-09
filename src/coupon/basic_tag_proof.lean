@@ -2,7 +2,7 @@
 structure Tag where
   lhs : UInt8
   rhs : UInt8
-deriving Repr
+deriving Repr, DecidableEq  -- automatically generate instances
 
 def Identity(x: UInt8) : Tag :=
   {lhs := x, rhs := x}
@@ -16,39 +16,35 @@ def Transitivity (t1 t2 : Tag) : Option Tag :=
     some { lhs := t1.lhs, rhs := t2.rhs }
   else
     none
-    
--- Define equivalence prposition for tags
-def TagEquiv (t1 t2 : Tag) : Prop :=
-  t1 = t2
-
--- Theorem: reflexivity — a tag is always equivalent to itself
-theorem tag_equiv_refl (t : Tag) : TagEquiv t t := by
-  unfold TagEquiv 
-  rfl
-
--- Theorem: symmetry — if t1 is equivalent to t2, then t2 is equivalent to t1
-theorem tag_equiv_symm (t1 t2 : Tag) (h : TagEquiv t1 t2) : TagEquiv t2 t1 := by
-  unfold TagEquiv at *
-  rw [h]
-
--- Theorem: transitivity — if t1 ≡ t2 and t2 ≡ t3, then t1 ≡ t3
-theorem tag_equiv_trans (t1 t2 t3 : Tag)
-    (h1 : TagEquiv t1 t2) (h2 : TagEquiv t2 t3) : TagEquiv t1 t3 := by
-  unfold TagEquiv at *
-  rw [h1, h2]
 
 
+inductive Derivable : Tag → Prop
+| identity (x : UInt8) : Derivable (Identity x)
+| symmetry (t : Tag) (h : Derivable t) : Derivable (Symmetry t)
+| transitivity (t u : Tag) (ht : Derivable t) (hu : Derivable u) (h_eq : t.rhs = u.lhs) :
+    Derivable { lhs := t.lhs, rhs := u.rhs }
+  
+open Derivable
+theorem derivable_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
+  by
+    intros t h
+    induction h with
+    | identity x =>
+        simp [Identity]
+    | symmetry t' h' IH =>
+        simp [Symmetry] at *
+        exact IH
+    | transitivity t u ht hu h_eq IHt IHu =>
+        rw [IHt, h_eq, IHu]
 
--- Define equivalence relation as structural equality
-theorem same_tags_equiv (t : Tag) : TagEquiv t t := by
-  unfold TagEquiv
-  rfl
 
-theorem tags_equiv_iff_equal (t1 t2 : Tag) : TagEquiv t1 t2 ↔ t1 = t2 := by
-  unfold TagEquiv
-  exact Iff.rfl
-
--- Theorem: If two tags are not equal, they are not equivalent
-theorem tags_not_equiv_if_not_equal (t1 t2 : Tag) (h : t1 ≠ t2) : ¬ TagEquiv t1 t2 := by
-  unfold TagEquiv
-  exact h
+-- The contradiction result: x ≠ y' but Derivable (x, y) and Derivable (x, y') implies false
+theorem derivable_tag_eq_impossible {x y y' : UInt8}
+    (h1 : Derivable ⟨x, y⟩)
+    (h2 : Derivable ⟨x, y'⟩)
+    (h_ne : y ≠ y') : False :=
+  by
+    have h_eq1 := derivable_invariant ⟨x, y⟩ h1
+    have h_eq2 := derivable_invariant ⟨x, y'⟩ h2
+    rw [h_eq1] at h_eq2
+    contradiction

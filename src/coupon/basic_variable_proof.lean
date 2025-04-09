@@ -15,7 +15,7 @@ theorem assumptions_hold : x = y ∧ z ≠ x := by
 theorem no_match_with_z (x y z : UInt8) (hxy : x = y) (hzx : z ≠ x) : ¬ (x = z ∨ y = z) := by
   intro h
   cases h with
-  | inl hxz =>
+  | inl hxz => -- inl: insert left ffor the Or (disjunction) type
     -- Case: x = z → contradiction with z ≠ x
     exact hzx (Eq.symm hxz)
   | inr hyz =>
