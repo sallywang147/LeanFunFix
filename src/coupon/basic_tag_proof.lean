@@ -17,6 +17,13 @@ def Transitivity (t1 t2 : Tag) : Option Tag :=
   else
     none
 
+/-
+https://leanprover.github.io/theorem_proving_in_lean4/inductive_types.html
+In Lean's library, 
+every concrete type other than the universes and 
+every type constructor other than dependent arrows 
+is an instance of a general family of type constructions known as inductive types
+-/
 -- a logic predicate: a tag is derivable. a derivable is a custom inductive type we define
 -- derivable(x) holds iff we can build a derivation of x using the rules/funcs you define
 inductive Derivable : Tag → Prop --dependent type: tag as input, proposition as output
