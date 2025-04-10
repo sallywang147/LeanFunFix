@@ -1,3 +1,10 @@
+--Key assumption to discuss with Keith/Yuhan: 
+/-code in namespace VerifiedTag should be considered privileged 
+to prevent malicious users. 
+
+Our users should be able to call  `open VerifiedTag` and cosntruct
+safe tags certified by our theorem.  
+-/
 namespace VerifiedTag
 -- structure: https://lean-lang.org/doc/reference/latest/Type-Classes/Deriving-Instances/
 private structure Tag where -- we do not want malicious users to invoke this struct
@@ -82,6 +89,7 @@ theorem derivable_tag_eq_impossible {x y y' : UInt8}
     contradiction
 end VerifiedTag
 
+-- The examples below are APIs exposed to users 
 -- evilTag cannot exist: all tags should be derivable; NOT if a tag is derivable, then we do stuff
 open VerifiedTag
 
