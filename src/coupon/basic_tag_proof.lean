@@ -1,5 +1,6 @@
+namespace VerifiedTag
 -- structure: https://lean-lang.org/doc/reference/latest/Type-Classes/Deriving-Instances/
-structure Tag where
+private structure Tag where -- we do not want malicious users to invoke this struct
   lhs : UInt8
   rhs : UInt8
 deriving Repr -- automatically generate instances when we have Repr
@@ -17,9 +18,7 @@ def Transitivity (t1 t2 : Tag) : Option Tag :=
   else
     none
 
--- evilTag cannot exist: all tags should be derivable; NOT if a tag is derivable, then we do stuff
-def evilTag(x: UInt8): Tag := 
-  {lhs := x, rhs := 52}
+
 /-
 https://leanprover.github.io/theorem_proving_in_lean4/inductive_types.html
 In Lean's library, 
@@ -35,6 +34,19 @@ inductive Derivable : Tag → Prop --dependent type: tag as input, proposition a
 | transitivity (t u : Tag) (ht : Derivable t) (hu : Derivable u) (h_eq : t.rhs = u.lhs) :
     Derivable { lhs := t.lhs, rhs := u.rhs }
   
+structure SafeTag where
+  tag : Tag
+  proof : Derivable tag
+
+def makeIdentity (x : UInt8) : SafeTag :=
+  ⟨Identity x, Derivable.identity x⟩
+
+def makeSymmetry (st : SafeTag) : SafeTag :=
+  ⟨Symmetry st.tag, Derivable.symmetry st.tag st.proof⟩
+
+def makeTransitivity (t1 t2 : SafeTag) (h : t1.tag.rhs = t2.tag.lhs) : SafeTag :=
+  ⟨{ lhs := t1.tag.lhs, rhs := t2.tag.rhs },
+   Derivable.transitivity t1.tag t2.tag t1.proof t2.proof h⟩
 
 --goal: t.lhs = t.rhs
 theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
@@ -68,3 +80,13 @@ theorem derivable_tag_eq_impossible {x y y' : UInt8}
     have h_eq2 := equivalence_invariant ⟨x, y'⟩ h2
     rw [h_eq1] at h_eq2
     contradiction
+end VerifiedTag
+
+-- evilTag cannot exist: all tags should be derivable; NOT if a tag is derivable, then we do stuff
+open VerifiedTag
+
+def t1 : SafeTag := makeIdentity 10
+#eval t1.tag  -- output: { lhs := 10, rhs := 10 }
+
+def t2 : SafeTag := makeSymmetry t1
+#eval t2.tag
