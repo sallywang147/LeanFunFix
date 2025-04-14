@@ -47,7 +47,8 @@ inductive Derivable : Tag → Prop --dependent type: tag as input, proposition a
 
 
 -- If an arbitray tag is derivable,
--- it's built by identity, symmetry, or transitivity. No other ways are possible 
+-- it's built by identity, symmetry, or transitivity
+-- This proves soundness: All derivable tags are built using one of our three ruels
 theorem only_derivable_by_rules :
   ∀ t : Tag, Derivable t →
     (∃ x, t = Identity x) ∨
@@ -65,8 +66,9 @@ theorem only_derivable_by_rules :
       right; right
       exact ⟨t₁, t₂, ht₁, ht₂, h_eq, rfl⟩
 
--- If an arbitray tag was built by identity, symmetry, or transitivity, 
--- then it's derivable.
+-- partial completeness proof below: all tags (if built by identity, symmetry, or transitivity) are derivable 
+--If an arbitray tag was built by identity, symmetry, or transitivity, 
+-- then it's derivable
 theorem an_arbitrary_tag_derivable:
   ∀ t : Tag, 
     (∃ x, t = Identity x) ∨
@@ -90,6 +92,9 @@ theorem an_arbitrary_tag_derivable:
           rw [heq]
           exact Derivable.transitivity t₁ t₂ h₁ h₂ h_eq
 
+-- Since we can prove the following theorem, it shows why 
+-- All tags (without any resitrcionts) are derivable cannot be proven 
+-- We simly cannnot prove that any tag, such as Tag(a, b) where a != b, is derivable 
 theorem derivable_implies_lhs_eq_rhs :
   ∀ t : Tag, Derivable t → t.lhs = t.rhs := by
   intro t d
