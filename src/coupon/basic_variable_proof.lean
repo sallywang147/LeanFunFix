@@ -13,7 +13,9 @@ Lean define negation as: ¬P  :=  P -> False
 So we actually have (...) -> false, in our case (x = z ∨ y = z) -> False
 When we write intro h: assume h : x = z ∨ y = z, and now my goal is to derive False
 -/
-theorem no_match_with_z (x y z : UInt8) (hxy : x = y) (hzx : z ≠ x) : ¬(x = z ∨ y = z) := by
+theorem no_match_with_z (x y z : UInt8) 
+(hxy : x = y) (hzx : z ≠ x) :
+ ¬(x = z ∨ y = z) := by
   intro h
   cases h with
   | inl hxz => -- inl: insert left ffor the Or (disjunction) type
@@ -31,3 +33,4 @@ theorem no_match_with_z (x y z : UInt8) (hxy : x = y) (hzx : z ≠ x) : ¬(x = z
     exact hzx (Eq.symm h')  -- now h' : x = z -> flip to z = x
 
 
+theorem startSmall : 
