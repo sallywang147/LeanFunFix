@@ -40,7 +40,7 @@ inductive Derivable : Tag → Prop --dependent type: tag as input, proposition a
 
 -- this invariant is the starting point of this file
 -- we proved this theorem during the first week of rotation 
--- goal: for all tags, if derivable, then t.lhs = t.rhs
+-- goal: for all tags, if derivable, then t.lhs == t.rhs
 theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
   by
     intros t h
@@ -63,14 +63,17 @@ theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
 
 
 /-
------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------
 second week of rotation: proven theorems to show "all tags are derivable" below
 ------------------------------------------------------------------------------------
 -/
 
 
 /-
-First way to prove that all tags -> derivable 
+First way to prove that all tags -> derivable
+Necessary assumptions by this methodd: 
+having derivable tags as base case or making Derivable a total relation 
+
 base cases: we have two derivable tags: t₁ t₂
 We use induction by transitivity rule to show that we 
 can have another derivable tag t₃. This proof is equivalent to changing our derivable inductive type into 
@@ -100,24 +103,25 @@ Note: our base case cannot just be a single, non-derivable tag;
 Please see pencil-paper proof for contradiction and the (non)-mechanized wrong proof
 -/
 theorem constructible_tags_derivable_by_induction 
-  (t₁ t₂ t₃ : Tag)
-  (h₁ : Derivable t₁)
-  (h₂ : Derivable t₂)
-  (a b c : UInt8)
-  (ht₁ : t₁ = { lhs := a, rhs := b })
+  (t₁ t₂ t₃ : Tag)  -- we have three abritrary tags t₁ t₂ t₃
+  (a b c : UInt8) --and three UInt8 numbers a b c
+  (h₁ : Derivable t₁) --our base case: two derivable tags t₁ and t₂
+  (h₂ : Derivable t₂) --our base case: two derivable tags t₁ and t₂
+  (ht₁ : t₁ = { lhs := a, rhs := b }) 
   (ht₂ : t₂ = { lhs := b, rhs := c })
   (ht₃ : t₃ = { lhs := a, rhs := c }) :
-  Derivable t₃ :=
+  Derivable t₃ :=  -- goal: from two derivable tags t₁ and t₂, we can construct another derivable tag t₃
 by
-  subst ht₁
+  subst ht₁ -- substitute every t₁ by {a, b}: we tell lean to use the concrete version instead of vars
   subst ht₂
   subst ht₃
-  exact Derivable.transitivity
-    { lhs := a, rhs := b }
-    { lhs := b, rhs := c }
-    h₁
-    h₂
-    rfl
+  exact -- finish the proof by thee following 
+    Derivable.transitivity --using transitivity rule
+    { lhs := a, rhs := b } -- a tag 1
+    { lhs := b, rhs := c }  --- a tag 2
+    h₁ -- tag 1 derivable by base case
+    h₂ -- tag 2 derivable by base case
+    rfl -- prove that b==b 
 
 /-
 First way adjacent - the wrong way to prove it:
@@ -169,18 +173,27 @@ theorem wrong_way_to_prove_all_tags_derivable : ∀ t : Tag, Derivable t := by
 
 
 /-
-Second way to prove that all constructible tags -> dereivable
-if tags are constructed by identity/symmetry/transitivity. 
+Second way to prove that all **constructible** tags <-> dereivable
+assumption: the tags we have are constructed by identity/symmetry/transitivity
+
+proof strategy: 
+if a tag is derivable, it's built by identity, symmetry, or transitivity
+if a tag is built by identity, symmetry, or transitivity, then it's derivable 
+
 
 But we cannot say any arbitrary tag is derivable, e.g. (3, 42) is not derivable 
 with proofs showing: a derivable tag -> rhs==lhs. 
 By contrapositive: rhs!=lhs -> a tag is not derivable. 
 
+Why? by the inductive definition of derivable, inductive Derivable: tag-> prop is not a total relation
+
+
 -/
 
 -- If an arbitray tag is derivable,
 -- it's built by identity, symmetry, or transitivity
--- This proves soundness: All derivable tags are built using one of our three ruels
+-- This proves soundness: All derivable tags are built using one of our three rules 
+-- 
 theorem only_derivable_by_rules :
   ∀ t : Tag, Derivable t →
     (∃ x, t = Identity x) ∨
@@ -189,11 +202,17 @@ theorem only_derivable_by_rules :
   intros t h
   induction h with
   | identity x =>
-      left
-      exact ⟨x, rfl⟩
-  | symmetry t₁ ht ih =>
-      right; left
-      exact ⟨t₁, ht, rfl⟩
+      left -- (∃ x, t = Identity x)
+      exact ⟨x, rfl⟩ --from lean documentation: ⟨x, p⟩ where p : P x	A value of type Σ x, P x or ∃ x, P x
+                     -- in our case, we say x is the witness for ∃ x, rfl is the proof that t = Identity x
+
+  /-when induction hypo h 
+  was built using symmetry constructor 
+  we do not need to declare ht or ih, because lean automatically binds it to the constructor args
+  -/
+  | symmetry t ht ih => 
+      right; left  
+      exact ⟨t, ht, rfl⟩
   | transitivity t₁ t₂ ht₁ ht₂ h_eq =>
       right; right
       exact ⟨t₁, t₂, ht₁, ht₂, h_eq, rfl⟩
@@ -212,11 +231,11 @@ theorem all_constructible_tags_derivable:
     Derivable t := by
   intros t h
   cases h with
-  | inl id_case =>
-      obtain ⟨x, hx⟩ := id_case
-      rw [hx]
+  | inl id_case => -- inl: left injection into an or:  (∃ x, t = Identity x)
+      obtain ⟨x, hx⟩ := id_case 
+      rw [hx]  -- rewrite t by Indentity x to prevent type error  
       exact Derivable.identity x
-  | inr rest =>
+  | inr rest =>    -- inr rest: not the first case, the remaining cases
       cases rest with
       | inl sym_case =>
           obtain ⟨t₁, h₁, heq⟩ := sym_case
@@ -237,6 +256,7 @@ theorem derivable_implies_lhs_eq_rhs :
   intro t d
   induction d with
   | identity x =>
+      -- wrong way: exact Identity, due to type error
       simp [Identity]
   | symmetry t' _ ih =>
       simp [Symmetry]
@@ -244,45 +264,71 @@ theorem derivable_implies_lhs_eq_rhs :
   | transitivity t₁ t₂ _ _ h_eq ih₁ ih₂ =>
       -- t = { lhs := t₁.lhs, rhs := t₂.rhs }
       -- we want to show t₁.lhs = t₂.rhs
-      calc
+      calc --calc does chaining 
+      /-
+      t₁.lhs
+        = t₁.rhs      -- by ih₁
+        = t₂.lhs      -- by h_eq
+        = t₂.rhs      -- by ih₂
+      -/
         t₁.lhs = t₁.rhs := ih₁
         _      = t₂.lhs := h_eq
         _      = t₂.rhs := ih₂
 
 
 /-
-Third way: shifting the proof burden to a function
+Third way: shifting the proof burden to a function and we generate tags by matching 
+proofs 
 
 -/
 inductive Equivalent : UInt8 → UInt8 → Type
-| refl (x : UInt8) : Equivalent x x
+| identity (x : UInt8) : Equivalent x x
 | symm {x y : UInt8} : Equivalent x y → Equivalent y x
 | trans {x y z : UInt8} : Equivalent x y → Equivalent y z → Equivalent x z
 
 
 def createTag (x y : UInt8) (proof : Equivalent x y) : Option Tag :=
-  match proof with
-  | Equivalent.refl _ =>
+  match proof with        -- matching against a proof of type Equivalent x y
+  | Equivalent.identity _ =>  -- _ is Lean's wildcard pattern, saying I just want to match shape
+                          -- in our case, it's same as Equivalent.identity(x, UInt8)
+                          -- this case can only match if x==y
       some { lhs := x, rhs := x }
 
-  | Equivalent.symm h' =>
-      createTag y x h'  -- since proof is for y == x
+  | Equivalent.symm p' =>  --matching on Equivalent.symm.  p' gives us : (Equivalent x y) from function 
+                           -- signature
+      createTag y x p'  -- since proof is for y == x
+                        -- Equivalent.symm (proof : Equivalent 7 8) doesn't exist, because we cannot construct
+                        -- a transition chain towards Equivalent 7, 8 from a identity base case Equivalent x x
 
-  | Equivalent.trans h₁ h₂ =>
-      match createTag x _ h₁, createTag _ y h₂ with
+  | Equivalent.trans p₁ p₂ => -- p₁ : Equivalent x z; p₂ : Equivalent z y
+      match createTag x _ p₁, createTag _ y p₂ with -- recursively invoking createTag 
+                                                    -- a tag t1 for x ≡ z by p₁ and a tag t2 for z ≡ y    
       | some t1, some t2 =>
           if t1.rhs == t2.lhs ∧ t1.lhs == x ∧ t2.rhs == y then
             some { lhs := x, rhs := y }
           else none
       | _, _ => none
 
-
-
 def createIdentityTag (x : UInt8) : Option Tag :=
-  createTag x x (Equivalent.refl x)
+  createTag x x (Equivalent.identity x)
 
 def createSymmetryTag (t : Tag) (proof : Equivalent t.lhs t.rhs) : Option Tag :=
   createTag t.rhs t.lhs (Equivalent.symm proof)
+/-
+what does createSymmetryTag  do? 
+proof : Equivalent a b
+
+  Equivalent.symm proof : Equivalent b a
+
+  createTag b a (Equivalent.symm proof)
+
+  generating Option Tag { lhs := b, rhs := a }
+
+it's not possible to have Equivalent a b where a !=b, because 
+it must have been built from a chain of reasoning starting with Equivalent x x,
+and composed via symmetry and transitivity
+
+-/
 
 def createTransitivityTag (t1 t2 : Tag)
   (proof1 : Equivalent t1.lhs t1.rhs)
@@ -291,15 +337,21 @@ def createTransitivityTag (t1 t2 : Tag)
   createTag t1.lhs t2.rhs proof
 
 
--- some test cases for 
-#eval createTag 7 7 (Equivalent.refl 7)  -- returns a tag: some { lhs := 7, rhs := 7 }
-#eval createTag 7 8 (Equivalent.refl 7)  -- none
+-- some test cases for the third way: it's not possible to use createTag to create evilTag 
+#eval createTag 7 7 (Equivalent.identity 7)  -- returns a tag: some { lhs := 7, rhs := 7 }
+#eval createTag 7 8 (Equivalent.identity 7)  -- not happening 
 
+def Tag₁ : Tag := { lhs := 7, rhs := 7 }
+def proof₁ : Equivalent Tag₁.lhs Tag₁.rhs := Equivalent.identity 7
+#eval createSymmetryTag Tag₁ proof₁
+
+def Tag₂ : Tag := { lhs := 7, rhs := 7 }
+def proof₂ : Equivalent Tag₂.lhs Tag₂.rhs := Equivalent.symm (Equivalent.identity 7)
+#eval createSymmetryTag Tag₂ proof₂
 
 
 /-
-Bonus proof: why evil tag is not constructible -> not derivable 
-
+Bonus proof: why evil tag is not constructible -> not derivable even without createTag function
 -/
 
 def evilTag (x : UInt8) : Tag := { lhs := x, rhs := 50 }
