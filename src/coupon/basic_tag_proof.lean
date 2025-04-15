@@ -64,7 +64,7 @@ theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
 
 /-
 -----------------------------------------------------------------------------------
-second week of rotation: proven theorems below
+second week of rotation: proven theorems to show "all tags are derivable" below
 ------------------------------------------------------------------------------------
 -/
 
@@ -73,7 +73,28 @@ second week of rotation: proven theorems below
 First way to prove that all tags -> derivable 
 base cases: we have two derivable tags: t₁ t₂
 We use induction by transitivity rule to show that we 
-can have another derivable tag t₃
+can have another derivable tag t₃. This proof is equivalent to changing our derivable inductive type into 
+
+1) we add a base case where we have a subset of derivable tags 
+inductive Derivable (Base : Tag → Prop) : Tag → Prop
+| base (t : Tag) (h : Base t) : Derivable t
+| identity (x : UInt8) : Derivable (Identity x)
+| symmetry (t : Tag) (h : Derivable t) : Derivable (Symmetry t)
+| transitivity (t u : Tag) (ht : Derivable t) (hu : Derivable u) (h_eq : t.rhs = u.lhs) :
+    Derivable { lhs := t.lhs, rhs := u.rhs }
+
+or 2) we define inductive Derivable type as a total relation by adding a total relation: 
+which defines inductive Derivable type as for every t : Tag, Derivable t holds 
+inductive Derivable : Tag → Prop
+| identity (x : UInt8) : Derivable (Identity x)
+| symmetry (t : Tag) (h : Derivable t) : Derivable (Symmetry t)
+| transitivity (t u : Tag) (ht : Derivable t) (hu : Derivable u)
+    (h_eq : t.rhs = u.lhs) : Derivable { lhs := t.lhs, rhs := u.rhs }
+| total (t : Tag) : Derivable t  
+
+We do not pursue 1) or 2), because it will break out earlier proofs by proving additional base 
+or total relation cases. Also if we use 2), "all tags are derivable" becomes a trivial statement
+by Derivable definition. We no longer need a proof for it. Do we want that? 
 
 Note: our base case cannot just be a single, non-derivable tag; 
 Please see pencil-paper proof for contradiction and the (non)-mechanized wrong proof
@@ -233,20 +254,47 @@ theorem derivable_implies_lhs_eq_rhs :
 Third way: shifting the proof burden to a function
 
 -/
-def makeTag (x y : UInt8) : Option Tag :=
-  let t₁ := Identity x      -- {x, x}
-  let t₂ := Identity y      -- {y, y}
-  if t₁.rhs == t₂.lhs then
-    Transitivity t₁ t₂
-  else
-    let t₂_sym := Symmetry t₂
-    if t₁.rhs == t₂_sym.lhs then
-      Transitivity t₁ t₂_sym
-    else
-      none
-#eval makeTag 42 42 -- some {42, 42}
-#eval makeTag 42 50 -- none (can't derive)
-#eval makeTag 42 43 -- none (can't derive)
+inductive Equivalent : UInt8 → UInt8 → Type
+| refl (x : UInt8) : Equivalent x x
+| symm {x y : UInt8} : Equivalent x y → Equivalent y x
+| trans {x y z : UInt8} : Equivalent x y → Equivalent y z → Equivalent x z
+
+
+def createTag (x y : UInt8) (proof : Equivalent x y) : Option Tag :=
+  match proof with
+  | Equivalent.refl _ =>
+      some { lhs := x, rhs := x }
+
+  | Equivalent.symm h' =>
+      createTag y x h'  -- since proof is for y == x
+
+  | Equivalent.trans h₁ h₂ =>
+      match createTag x _ h₁, createTag _ y h₂ with
+      | some t1, some t2 =>
+          if t1.rhs == t2.lhs ∧ t1.lhs == x ∧ t2.rhs == y then
+            some { lhs := x, rhs := y }
+          else none
+      | _, _ => none
+
+
+
+def createIdentityTag (x : UInt8) : Option Tag :=
+  createTag x x (Equivalent.refl x)
+
+def createSymmetryTag (t : Tag) (proof : Equivalent t.lhs t.rhs) : Option Tag :=
+  createTag t.rhs t.lhs (Equivalent.symm proof)
+
+def createTransitivityTag (t1 t2 : Tag)
+  (proof1 : Equivalent t1.lhs t1.rhs)
+  (proof2 : Equivalent t2.lhs t2.rhs)
+  (proof : Equivalent t1.lhs t2.rhs) : Option Tag :=
+  createTag t1.lhs t2.rhs proof
+
+
+-- some test cases for 
+#eval createTag 7 7 (Equivalent.refl 7)  -- returns a tag: some { lhs := 7, rhs := 7 }
+#eval createTag 7 8 (Equivalent.refl 7)  -- none
+
 
 
 /-
