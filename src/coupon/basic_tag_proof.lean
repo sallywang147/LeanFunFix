@@ -9,7 +9,13 @@ private structure Tag where -- we do not want malicious users to invoke this str
   rhs : UInt8
 deriving Repr -- automatically generate instances when we have Repr
 
-  
+-- show a coupon collector: a module making the trade 
+-- the user 
+
+-- wrap them in one entry function: lamda \(Ident. Symmetry. Transitivity.)
+--coupon collector function: request from user (entry function)
+--user calls entry func-> says identity 
+--we want statements eventually (next step): x=5 (name, value) and x= y (name, name)  => y=5 
 def Identity(x: UInt8) : Tag :=
   {lhs := x, rhs := x}
 
@@ -18,10 +24,12 @@ def Symmetry(t: Tag) : Tag :=
 
 
 def Transitivity (t1 t2 : Tag) : Option Tag :=
-  if t1.rhs == t2.lhs then --(a, b) (b, c)
+  if t1.rhs == t2.lhs then --(a, b) (b, c) //value might be megabytes //name can be a 256-bit register 
+   -- couopon collector do not compare giant megabytes 
     some { lhs := t1.lhs, rhs := t2.rhs } --(a, c)
   else
     none
+
 
 /-
 https://leanprover.github.io/theorem_proving_in_lean4/inductive_types.html
@@ -66,12 +74,14 @@ theorem equivalence_invariant : ∀ (t : Tag), Derivable t → t.lhs = t.rhs :=
 ------------------------------------------------------------------------------------
 second week of rotation: proven theorems to show "all tags are derivable" below
 ------------------------------------------------------------------------------------
+
+all true tags go into our functions, there are no way to make a false tag 
 -/
 
 
 /-
 First way to prove that all tags -> derivable
-Necessary assumptions by this methodd: 
+Necessary assumptions by this method: 
 having derivable tags as base case or making Derivable a total relation 
 
 base cases: we have two derivable tags: t₁ t₂
@@ -102,6 +112,9 @@ by Derivable definition. We no longer need a proof for it. Do we want that?
 Note: our base case cannot just be a single, non-derivable tag; 
 Please see pencil-paper proof for contradiction and the (non)-mechanized wrong proof
 -/
+
+-- any function has ability to make a tag, the function is the author of the tag 
+-- any tags the coupon collector
 theorem constructible_tags_derivable_by_induction 
   (t₁ t₂ t₃ : Tag)  -- we have three abritrary tags t₁ t₂ t₃
   (a b c : UInt8) --and three UInt8 numbers a b c
@@ -218,8 +231,6 @@ theorem only_derivable_by_rules :
       exact ⟨t₁, t₂, ht₁, ht₂, h_eq, rfl⟩
 
 
-
-
 -- partial completeness proof below: all tags (if built by identity, symmetry, or transitivity) are derivable 
 --If an arbitray tag was built by identity, symmetry, or transitivity, 
 -- then it's derivable
@@ -287,6 +298,17 @@ inductive Equivalent : UInt8 → UInt8 → Type
 | trans {x y z : UInt8} : Equivalent x y → Equivalent y z → Equivalent x z
 
 
+
+--coupon collector is a function: a request to issue a different a tag; 
+--give it a tag: a==b; the coupon collector/function says b==a 
+--give it two tags: tag1: a==b and tag2: b==c; it gives you a tag a==c 
+--if inputs were true, output were true 
+--third trade: give it a uint8 x, it issues a tag x==x 
+--all tags coupon collector
+
+
+--pre: all tags input are true 
+--post: all tags output 
 def createTag (x y : UInt8) (proof : Equivalent x y) : Option Tag :=
   match proof with        -- matching against a proof of type Equivalent x y
   | Equivalent.identity _ =>  -- _ is Lean's wildcard pattern, saying I just want to match shape
@@ -310,7 +332,7 @@ def createTag (x y : UInt8) (proof : Equivalent x y) : Option Tag :=
       | _, _ => none
 
 def createIdentityTag (x : UInt8) : Option Tag :=
-  createTag x x (Equivalent.identity x)
+  createTag x x (Equivalent.identity x) 
 
 def createSymmetryTag (t : Tag) (proof : Equivalent t.lhs t.rhs) : Option Tag :=
   createTag t.rhs t.lhs (Equivalent.symm proof)
@@ -334,7 +356,7 @@ def createTransitivityTag (t1 t2 : Tag)
   (proof1 : Equivalent t1.lhs t1.rhs)
   (proof2 : Equivalent t2.lhs t2.rhs)
   (proof : Equivalent t1.lhs t2.rhs) : Option Tag :=
-  createTag t1.lhs t2.rhs proof
+  createTag t1.lhs t2.rhs proof  -- fix 
 
 
 -- some test cases for the third way: it's not possible to use createTag to create evilTag 
@@ -397,5 +419,47 @@ theorem derivable_tag_eq_impossible {x y y' : UInt8}
     contradiction
 
 
+-- createTagTwo: more similar to how we might implement in 
+-- other programming language 
+
+def createTagTwo (FuncSelector : String)
+              (x : Option UInt8 := none)
+              (t1 : Option Tag := none)
+              (t2 : Option Tag := none) : Option Tag :=
+
+  if FuncSelector = "identity" then
+    match x with
+    | some xVal => some (Identity xVal)
+    | none => none
+
+  else if FuncSelector = "symmetry" then
+    match t1 with
+    | some t => some (Symmetry t)
+    | none => none
+
+  else if FuncSelector = "transitivity" then
+    match t1, t2 with
+    | some t₁, some t₂ => Transitivity t₁ t₂
+    | _, _ => none
+
+  else none
 
 
+-- Identity (uses only x)
+#eval createTagTwo  "identity" (x := some 7)
+-- some { lhs := 7, rhs := 7 }
+
+-- Symmetry (uses only t1)
+#eval createTagTwo "symmetry" (t1 := some { lhs := 1, rhs := 2 })
+-- some { lhs := 2, rhs := 1 }
+
+-- Transitivity (uses t1 and t2)
+#eval createTagTwo  "transitivity"
+  (t1 := some { lhs := 1, rhs := 2 })
+  (t2 := some { lhs := 2, rhs := 3 })
+-- some { lhs := 1, rhs := 3 }
+
+-- Invalid: missing t2
+#eval createTagTwo "transitivity"
+  (t1 := some { lhs := 1, rhs := 2 })
+-- none
