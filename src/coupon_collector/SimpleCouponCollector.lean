@@ -6,7 +6,7 @@
 To discuss w/ Keith: do we also want to prove that invalid inputs -> none? 
 
 Valid intputs -> valid outputs would give us soundness. If we also 
-have invalid inputs -> none,  this will ensure completeness. 
+have invalid inputs -> none,  this should ensure completeness. 
 -/
 
 structure Tag where 
