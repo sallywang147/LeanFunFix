@@ -43,24 +43,18 @@ instance validOutput_transitivity (t₁ t₂ : Tag) (h : t₁.rhs = t₂.lhs) :
 
 theorem apply_coupon_collector_functionally_correct
   (r : request) [ValidRequest r] :
-  ∃ t : Tag, ∃ x y z : UInt8,
-    apply_coupon_collector r = some t ∧ ValidOutput r t :=
+  ∃ t : Tag,
+  apply_coupon_collector r = some t ∧ ValidOutput r t :=
 by
   cases r with
   | Identity x =>
       apply Exists.intro { lhs := x, rhs := x }
-      apply Exists.intro x
-      apply Exists.intro x
-      apply Exists.intro x
       apply And.intro
       simp [apply_coupon_collector]
       exact validOutput_identity x  
 
   | Symmetry t₀ =>
    apply Exists.intro { lhs := t₀.rhs, rhs := t₀.lhs }
-   apply Exists.intro t₀.lhs
-   apply Exists.intro t₀.rhs
-   apply Exists.intro t₀.lhs
    apply And.intro
    simp [apply_coupon_collector]
    exact validOutput_symmetry t₀
@@ -70,9 +64,6 @@ by
   -- we should avoid using have h: ValidRequest.ok due to terrible type mismatch
   | Transitivity pair =>
       apply Exists.intro { lhs := pair.fst.lhs, rhs := pair.snd.rhs }
-      apply Exists.intro pair.fst.lhs
-      apply Exists.intro pair.fst.rhs
-      apply Exists.intro pair.snd.rhs
       apply And.intro
       simp [apply_coupon_collector]
       exact ValidRequest.ok (r := request.Transitivity pair)
