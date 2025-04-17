@@ -1,0 +1,16 @@
+name = "coupon_collector"
+version = "0.1.0"
+defaultTargets = ["coupon_collector"]
+
+[[lean_lib]]
+name = "CouponCollector"
+
+[[lean_exe]]
+name = "coupon_collector"
+root = "Main"
+
+[[require]]
+name = "Paperproof"
+git = "https://github.com/Paper-Proof/paperproof.git"
+subDir = "lean"
+rev = "main"
