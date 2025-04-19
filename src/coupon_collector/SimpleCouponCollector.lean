@@ -3,31 +3,131 @@
 -- import Paperproof --tool to visualize proofs (I recommend to our group)
 
 /-
-To discuss w/ Keith: do we also want to prove that invalid inputs -> none? 
+To discuss w/ Keith: 
+0. --are the following definitions of truth shaky? 
+   - true tag inputs (only tags created by apply_coupon_collector are true) 
+      a valid identity request & uint8 x;
+      a valid symmety rerquest & t₁(x, y) from apply_coupon_collector; - enforcing x ≡ y or not? 
+      a valid transitivity request & t₁(x, y), t₂(y,z) from apply_coupon_collector;
+   - true tag outputs: 
+      if (a valid identity request & uint8 x) => t(x, x);
+      if (a valid symmety rerquest & t₁(x, y)) => t₁'(y, x);
+      if (a valid transitivity request & t₁(x, y), t₂(y,z)) => t₃(x, z);
+Note: Lean does not have hoare logic pre/post as in Rocq, so we implement them by Lean function in house
 
+1. do we also want to prove that invalid inputs -> none? 
 Valid intputs -> valid outputs would give us soundness. If we also 
 have invalid inputs -> none,  this should ensure completeness. 
--/
 
+2. Currently, we can have an input tag like {2, 3}, and by symmetry, we can end up with {3, 2}
+Do wee want that? Or should we enforce all tags have two equivalent fields, i.e. {2≡2} {x≡y} where x==y
+such that it's impossible to have {2, 3}, only possible to have {2, 2} or {3, 3}
+
+-/
 structure Tag where 
   lhs : UInt8
   rhs : UInt8
 deriving Repr 
 
 -- Explicit operations user can request (same names as constructors)
-inductive request --exposed to user
-| Identity : UInt8 → request
-| Symmetry : Tag → request
-| Transitivity: Prod Tag Tag → request --a structure: multi-args
+inductive Request --exposed to user
+| Identity : UInt8 → Request
+| Symmetry : Tag → Request
+| Transitivity: Prod Tag Tag → Request --a structure: multi-args
 
-def apply_coupon_collector : request → Option Tag
-| request.Identity x       => some ({lhs := x, rhs := x})
-| request.Symmetry t       => some ({lhs := t.rhs, rhs := t.lhs})
-| request.Transitivity (t₁, t₂) => if t₁.rhs == t₂.lhs then some {lhs := t₁.lhs, rhs := t₂.rhs} else none
+def apply_coupon_collector : Request → Option Tag
+| Request.Identity x       => some ({lhs := x, rhs := x})
+| Request.Symmetry t       => some ({lhs := t.rhs, rhs := t.lhs})
+| Request.Transitivity (t₁, t₂) => if t₁.rhs == t₂.lhs then some {lhs := t₁.lhs, rhs := t₂.rhs} else none
 
-/--------------------------------------------------------------------
-Define class types of valid/true input(requests) and output(tags) below
+
+/- We adapt the Pre, Post from Lean ZulipChat for our purposes: 
+ https://leanprover-community.github.io/archive/stream/270676-lean4/topic/Applying.20post.20invariant.20to.20Hoare.20State.20Monad.html
+ Hoare logic pre and post invariants
+-/
+def Pre (α β θ : Type) : Type := α → β → θ  → Prop
+def Post (x y z : Type) : Type := x → y → z → Prop
+
+
+/-------------------------------------------------------------------- 
+valid/true inputs (tags) and outputs (tags) below
+
+pre: all tags input are true; 
+post: all tags output are true; 
 ----------------------------------------------------------------------/
+def valid_request : Request → Prop
+| Request.Identity _ => True
+| Request.Symmetry _ => True   -- any tag is fine for now, because true_tag will enforce validity
+| Request.Transitivity (t₁, t₂) => t₁.rhs = t₂.lhs
+
+
+def pre_condition : Pre Request Tag UInt8 :=
+  fun r t x =>
+    valid_request r ∧
+    apply_coupon_collector r = some t ∧
+    match r with
+    | Request.Identity y => x = y ∧ t.lhs = y ∧ t.rhs = y
+    | Request.Symmetry t₁ => t.lhs = t₁.rhs ∧ t.rhs = t₁.lhs
+    | Request.Transitivity (t₁, t₂) =>
+        t₁.rhs = t₂.lhs ∧ t.lhs = t₁.lhs ∧ t.rhs = t₂.rhs
+
+def post_condition : Post Request Tag UInt8 :=
+  fun r t x =>
+    match r with
+    | Request.Identity y =>
+        x = y ∧ t.lhs = y ∧ t.rhs = y
+
+    | Request.Symmetry t₁ =>
+        t.lhs = t₁.rhs ∧ t.rhs = t₁.lhs
+
+    | Request.Transitivity (t₁, t₂) =>
+        t₁.rhs = t₂.lhs ∧
+        t.lhs = t₁.lhs ∧
+        t.rhs = t₂.rhs
+
+theorem apply_coupon_collector_correct :
+  ∀ r t x,
+    pre_condition r t x →
+    post_condition r t x :=
+by
+  intros r t x h
+  rcases h with ⟨valid, applied, shape⟩
+  -- cases on r to match structure
+  cases r with
+  | Identity y =>
+      simp [post_condition]
+      exact shape
+
+  | Symmetry t₁ =>
+      simp [post_condition]
+      exact shape
+
+  | Transitivity pair =>
+      let t₁ := pair.fst
+      let t₂ := pair.snd
+      simp [post_condition]
+      exact shape
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 -- we can do case match for validRequest, becase it is one-to-one mapping: request to prop
 class ValidRequest (r : request) : Prop where -- valid requests are a type class 
