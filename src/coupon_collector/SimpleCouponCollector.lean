@@ -110,17 +110,44 @@ by
 
 
 
+def true_tag (t : Tag) : Prop :=
+  ∃ r : Request, valid_request r ∧ apply_coupon_collector r = some t
 
 
+theorem apply_coupon_collector_functionally_correct :
+  ∀ (t : Tag), true_tag t → ∃ (r : Request) (x : UInt8), post_condition r t x :=
+by
+  intros t h
+  obtain ⟨r, ⟨valid, applied⟩⟩ := h
+  cases r with
+  | Identity y =>
+      cases applied
+      exact ⟨Request.Identity y, y, ⟨rfl, ⟨rfl, rfl⟩⟩⟩
 
+  | Symmetry t₁ =>
+      cases applied
+      exact ⟨Request.Symmetry t₁, t₁.rhs, ⟨rfl, rfl⟩⟩
 
+  | Transitivity pair =>
+    let t₁ := pair.fst
+    let t₂ := pair.snd
+    let expected : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
 
+    -- valid : t₁.rhs = t₂.lhs
+    -- applied : apply_coupon_collector (Transitivity (t₁, t₂)) = some t
 
+    -- Instead of evaluating apply_coupon_collector, we define what it must return
+    -- and use the injectivity of `Option.some`
+    have h :
+      apply_coupon_collector (Request.Transitivity (t₁, t₂)) = some expected := by
+        simp [apply_coupon_collector, valid]
+        exact ⟨valid, rfl⟩ -- learned lesson: this line solves a very pesky bug on shape mismatch 
 
+    rw [h] at applied
+    injection applied with h_eq
+    subst h_eq
 
-
-
-
+    exact ⟨Request.Transitivity (t₁, t₂), t₁.lhs, ⟨valid, ⟨rfl, rfl⟩⟩⟩
 
 
 
