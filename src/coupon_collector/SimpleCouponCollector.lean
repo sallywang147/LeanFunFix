@@ -31,6 +31,8 @@ Do wee want that? Or should we enforce all tags have two equivalent fields, i.e.
 such that it's impossible to have {2, 3}, only possible to have {2, 2} or {3, 3}
 
 -/
+set_option trace.split.failure true
+
 structure Tag where 
   lhs : UInt8 
   rhs : UInt8 
@@ -187,41 +189,7 @@ true_tag (evilTag 5)
 pre_condition r (evilTag x) x
 
 
-theorem not_true_tag_returns_none :
-  ∀ r, ∀ t,
-    ¬ (∃ x, pre_condition r t x) →
-    apply_coupon_collector r ≠ some t :=
-    by
-      intros r t h_not_pre
-      intro h_contra  -- suppose apply_coupon_collector r = some t
-      -- derive contradiction from `h_contra` and the definition of true tag
-      have h : ∃ x, pre_condition r t x := by
-        -- extract structure from r and define matching x
-        cases r with
-        | Identity y =>
-            exists y
-            simp [pre_condition, apply_coupon_collector]
-            exact ⟨trivial, h_contra, ⟨rfl, rfl, rfl⟩⟩
-
-        | Symmetry t₁ =>
-            exists t₁.rhs
-            simp [pre_condition, apply_coupon_collector]
-            exact ⟨trivial, h_contra, ⟨rfl, rfl⟩⟩
-
-        | Transitivity (t₁, t₂) =>
-            exists t₁.lhs
-            simp [pre_condition, apply_coupon_collector]
-            split at h_contra
-            case inl h_eq =>
-              injection h_contra with h_eq_tag
-              subst h_eq_tag
-              exact ⟨h_eq, rfl, rfl⟩
-            case inr h_ne =>
-              simp at h_contra
-
-      contradiction
-
-
+-- completeness by proving the converse: if not valid tags/requests -> apply returns none
 theorem non_true_tag_means_none :
   ∀ t,
     ¬ true_tag t →
@@ -229,18 +197,22 @@ theorem non_true_tag_means_none :
 by
   intros t h_not_true r h_some
   apply h_not_true
-  -- construct ⟨r, ⟨valid_request r, apply_coupon_collector r = some t⟩⟩
+  -- Prove: true_tag t := ∃ r, valid_request r ∧ apply_coupon_collector r = some t
+  exists r  -- supply the request r first
   constructor
-  · exact r
-  · constructor
-    · -- valid_request r
-      cases r with
-      | Identity _ => trivial
-      | Symmetry _ => trivial
-      | Transitivity (t₁, t₂) =>
-          simp [valid_request]
-          simp [apply_coupon_collector] at h_some
-          split at h_some
-          · exact h_1 -- from the `if` guard: t₁.rhs = t₂.lhs
-          · contradiction
-    · exact h_some
+  · -- valid_request r
+    cases r with
+    | Identity _ => trivial
+    | Symmetry _ => trivial
+    | Transitivity pair =>
+        let t₁ := pair.fst
+        let t₂ := pair.snd
+        simp [valid_request]
+        simp [apply_coupon_collector] at h_some
+        -- apply_coupon_collector returns some t if t₁.rhs = t₂.lhs
+        -- and t = { lhs := t₁.lhs, rhs := t₂.rhs }
+        -- so we destruct the conjunction
+        cases h_some with
+        | intro h_eq_rhs h_eq_tag =>
+            exact h_eq_rhs
+  · exact h_some
