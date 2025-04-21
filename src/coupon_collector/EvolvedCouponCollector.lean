@@ -17,9 +17,6 @@ inductive Request where
   deriving Repr
 
 
-def create_equivalenc_tag (t : Term) : Tag :=
-  { lhs := t, rhs := t }
-
 
 def apply_coupon_collector : Request → Option Tag
   | Request.Identity t1 t2 =>
@@ -125,3 +122,8 @@ theorem not_provable_5_eq_6 : ¬ Provable { lhs := Term.const 5, rhs := Term.con
   intro h
   have eq := provable_implies_lhs_eq_rhs _ h
   simp at eq
+
+/--------------------------------------------------------------------------------------
+Experimenting different proof strategy for "impossible to have (5≡6)" 
+without inductive predicates below 
+---------------------------------------------------------------------------------------/
