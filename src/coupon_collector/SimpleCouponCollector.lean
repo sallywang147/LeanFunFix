@@ -31,7 +31,6 @@ Do wee want that? Or should we enforce all tags have two equivalent fields, i.e.
 such that it's impossible to have {2, 3}, only possible to have {2, 2} or {3, 3}
 
 -/
-set_option trace.split.failure true
 
 structure Tag where 
   lhs : UInt8 
