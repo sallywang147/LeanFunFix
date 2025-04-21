@@ -22,6 +22,11 @@ To discuss w/ Keith:
       if (a valid transitivity request & t₁(x, y), t₂(y,z)) => t₃(x, z);
 Note: Lean does not have hoare logic pre/post as in Rocq, so we implement them by Lean function in house
 
+Another way to phrase the "true input" question: 
+what kind of truth do we want to trace/prove for? 
+like the UInt 8 numbers themselves (e.g. no overflow)? or 
+how the tags are created? I think it should be the latter. 
+
 1. do we also want to prove that invalid inputs -> none? I already did...
 Valid intputs -> valid outputs would give us soundness. If we also 
 have invalid inputs -> none,  this should ensure completeness. 
@@ -65,7 +70,7 @@ post: all tag outputs are true;
 ----------------------------------------------------------------------/
 def valid_request : Request → Prop --helper definition used in pre_condition later on 
 | Request.Identity _ => True
-| Request.Symmetry _ => True   -- any tag is fine for now, because we will enforce tag validity in pre
+| Request.Symmetry _ => True   -- any tag is fine for now, because we will enforce tag validity in pre_condition below
 | Request.Transitivity (t₁, t₂) => t₁.rhs = t₂.lhs
 
 
