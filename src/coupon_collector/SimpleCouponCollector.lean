@@ -26,7 +26,7 @@ Note: Lean does not have hoare logic pre/post as in Rocq, so we implement them b
 Valid intputs -> valid outputs would give us soundness. If we also 
 have invalid inputs -> none,  this should ensure completeness. 
 
-2. Currently, we can have an input tag like {2, 3}, and by symmetry, we can end up with {3, 2}
+2. Currently, we can have an input tag like {2, 3}, and submit a request by symmetry, we can end up with {3, 2}
 Do wee want that? Or should we enforce all tags have two equivalent fields, i.e. {2≡2} {x≡y} where x==y
 such that it's impossible to have {2, 3}, only possible to have {2, 2} or {3, 3}
 

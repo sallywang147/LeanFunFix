@@ -3,7 +3,8 @@ inductive Term where
   | const : UInt8 → Term
   deriving Repr, DecidableEq
 
-structure Tag where
+structure Tag where --Tag supports symbolic variable and encodes symbolic vars as string 
+                    -- Tag considers UInt8 as a constant variable 
   lhs : Term
   rhs : Term
   deriving Repr
