@@ -10,9 +10,9 @@ structure Tag where --Tag should support symbolic variable and encodes symbolic 
   deriving Repr
 
 
-inductive Request where
+inductive Request where  -- might be shaky in this iteration: need refactoring 
   | Identity     : Term → Term → Request
-  | Symmetry     : Request → Request
+  | Symmetry     : Request → Request -- we want a tag from ientity first to enforce (x≡y) in all tags we have 
   | Transitivity : Request × Request → Request
   deriving Repr
 
