@@ -2,6 +2,9 @@
 Since we are experimenting equivalenceTag proofs in this iteration, 
 Request implmentation is shaky, because we're basically asking all tags have to come from 
 identity request first, before we can apply symmetry/transitivity 
+
+In this implementation, the true Tags we can have are {x≡y}, {x≡5}, {5≡y}, {5≡5}
+Impossible to have {2≡5}
 -/
 
 inductive Term where
