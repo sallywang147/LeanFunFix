@@ -7,8 +7,8 @@ To discuss w/ Keith:
 0. --are the following definitions of truth shaky? 
     - true tag inputs (only tags created by apply_coupon_collector AND requests are valid) 
       a valid identity request & uint8 x;
-      a valid symmety rerquest & t₁(x, y) from apply_coupon_collector; - enforcing x ≡ y or not? 
-      a valid transitivity request & t₁(x, y), t₂(y,z) from apply_coupon_collector;
+      a valid symmety rerquest & a valid tag t₁(x, y) from apply_coupon_collector; - enforcing x ≡ y or not? 
+      a valid transitivity request & valid tags t₁(x, y), t₂(y,z) from apply_coupon_collector;
 
     - Alternatively, if we we want to simplify things, we just define true tags as tags created by 
   apply_coupon_collector function only and smiply use true tags as a pre-condition
