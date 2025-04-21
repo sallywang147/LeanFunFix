@@ -1,3 +1,9 @@
+/-
+Since we are experimenting equivalenceTag proofs in this iteration, 
+Request implmentation is shaky, because we're basically asking all tags have to come from 
+identity request first, before we can apply symmetry/transitivity 
+-/
+
 inductive Term where
   | var : String → Term
   | const : UInt8 → Term
