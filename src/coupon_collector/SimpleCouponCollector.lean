@@ -5,7 +5,7 @@
 /-
 To discuss w/ Keith: 
 0. --are the following definitions of truth shaky? 
-    - true tag inputs (only tags created by apply_coupon_collector AND valid requests are true) 
+    - true tag inputs (only tags created by apply_coupon_collector AND requests are valid) 
       a valid identity request & uint8 x;
       a valid symmety rerquest & t₁(x, y) from apply_coupon_collector; - enforcing x ≡ y or not? 
       a valid transitivity request & t₁(x, y), t₂(y,z) from apply_coupon_collector;
@@ -22,7 +22,7 @@ To discuss w/ Keith:
       if (a valid transitivity request & t₁(x, y), t₂(y,z)) => t₃(x, z);
 Note: Lean does not have hoare logic pre/post as in Rocq, so we implement them by Lean function in house
 
-1. do we also want to prove that invalid inputs -> none? 
+1. do we also want to prove that invalid inputs -> none? I already did...
 Valid intputs -> valid outputs would give us soundness. If we also 
 have invalid inputs -> none,  this should ensure completeness. 
 
@@ -32,8 +32,8 @@ such that it's impossible to have {2, 3}, only possible to have {2, 2} or {3, 3}
 
 -/
 structure Tag where 
-  lhs : UInt8
-  rhs : UInt8
+  lhs : UInt8 
+  rhs : UInt8 
 deriving Repr 
 
 -- Explicit operations user can request (same names as constructors)
@@ -68,6 +68,10 @@ def valid_request : Request → Prop --helper definition used in pre_condition l
 | Request.Transitivity (t₁, t₂) => t₁.rhs = t₂.lhs
 
 
+/-------------------------------------------------------------------
+pre-conditon: true tags from apply_coupon_collector function AND rrequests are valid 
+--------------------------------------------------------------------/
+
 def pre_condition : Pre Request Tag UInt8 :=
   fun r t x =>
     valid_request r ∧
@@ -77,6 +81,14 @@ def pre_condition : Pre Request Tag UInt8 :=
     | Request.Symmetry t₁ => t.lhs = t₁.rhs ∧ t.rhs = t₁.lhs
     | Request.Transitivity (t₁, t₂) =>
         t₁.rhs = t₂.lhs ∧ t.lhs = t₁.lhs ∧ t.rhs = t₂.rhs
+
+/-----------------------------------------------------------
+post-condition (the guarantee we want from our function)
+ the tag t must reflect the logical semantics of the request:
+    for Identity: t = (x, x) and matches request input y
+    for Symmetry: t = Symmetry(t₁)
+    for Transitivity: t = (t₁.lhs, t₂.rhs) if joinable
+-----------------------------------------------------------------/
 
 def post_condition : Post Request Tag UInt8 :=
   fun r t x =>
@@ -113,7 +125,15 @@ by
       simp [post_condition]
       exact shape
 
+/-------------------------------------------------------------------
+pre-conditon: true tags from apply_coupon_collector function 
 
+post-condition (the guarantee we want from our function)
+ the tag t must reflect the logical semantics of the request:
+    for Identity: t = (x, x) and matches request input y
+    for Symmetry: t = Symmetry(t₁)
+    for Transitivity: t = (t₁.lhs, t₂.rhs) if joinable
+--------------------------------------------------------------------/
 
 def true_tag (t : Tag) : Prop :=
   ∃ r : Request, valid_request r ∧ apply_coupon_collector r = some t
@@ -165,3 +185,62 @@ def evilTag (x : UInt8) : Tag := { lhs := x, rhs := 50 }
 -- now the evilTag will not create a tag satisfying either of our pre-conditions
 true_tag (evilTag 5) 
 pre_condition r (evilTag x) x
+
+
+theorem not_true_tag_returns_none :
+  ∀ r, ∀ t,
+    ¬ (∃ x, pre_condition r t x) →
+    apply_coupon_collector r ≠ some t :=
+    by
+      intros r t h_not_pre
+      intro h_contra  -- suppose apply_coupon_collector r = some t
+      -- derive contradiction from `h_contra` and the definition of true tag
+      have h : ∃ x, pre_condition r t x := by
+        -- extract structure from r and define matching x
+        cases r with
+        | Identity y =>
+            exists y
+            simp [pre_condition, apply_coupon_collector]
+            exact ⟨trivial, h_contra, ⟨rfl, rfl, rfl⟩⟩
+
+        | Symmetry t₁ =>
+            exists t₁.rhs
+            simp [pre_condition, apply_coupon_collector]
+            exact ⟨trivial, h_contra, ⟨rfl, rfl⟩⟩
+
+        | Transitivity (t₁, t₂) =>
+            exists t₁.lhs
+            simp [pre_condition, apply_coupon_collector]
+            split at h_contra
+            case inl h_eq =>
+              injection h_contra with h_eq_tag
+              subst h_eq_tag
+              exact ⟨h_eq, rfl, rfl⟩
+            case inr h_ne =>
+              simp at h_contra
+
+      contradiction
+
+
+theorem non_true_tag_means_none :
+  ∀ t,
+    ¬ true_tag t →
+    ∀ r, apply_coupon_collector r ≠ some t :=
+by
+  intros t h_not_true r h_some
+  apply h_not_true
+  -- construct ⟨r, ⟨valid_request r, apply_coupon_collector r = some t⟩⟩
+  constructor
+  · exact r
+  · constructor
+    · -- valid_request r
+      cases r with
+      | Identity _ => trivial
+      | Symmetry _ => trivial
+      | Transitivity (t₁, t₂) =>
+          simp [valid_request]
+          simp [apply_coupon_collector] at h_some
+          split at h_some
+          · exact h_1 -- from the `if` guard: t₁.rhs = t₂.lhs
+          · contradiction
+    · exact h_some
