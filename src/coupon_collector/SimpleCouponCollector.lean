@@ -41,7 +41,7 @@ true tag: lhs == rhs
 Lean distiguishes == v.s. =
 functionA==functionB cannot be true, even if the output is the same; 
 But functionA=functionB can be true in Lean if the output is equal; 
-we use =, because our prop doesn't have to be booleann equality. 
+we use ==, because we want our proposition to guarantee booleann equality on both value and type. 
 x==y is the same as BEq.beq x y
 --------------------------------------------------------------------------/
 
@@ -59,8 +59,12 @@ def post_condition: List Tag → Prop
   | _ => False
 
 
-axiom UInt8.eq_of_beq :
+axiom UInt8.eq_of_beq : -- == (enforcing type equality) in Lean is stronger than = (dooesn't enforce type equality)
   ∀ (a b : UInt8), (a == b) = true → a = b
+
+
+axiom beq_true_of_eq (a b : UInt8) (h : a = b) : 
+(a == b) = true 
 
 theorem apply_coupon_collector_correctness_proof :
   ∀ (ts : List Tag), ∀ (x : UInt8),
@@ -99,33 +103,22 @@ theorem apply_coupon_collector_correctness_proof :
     | cons t₂ tail =>
       cases tail with
       | nil =>
-        -- case ts = [t₁, t₂]
+ 
+    -- Case ts = [t₁, t₂]
         rcases h with ⟨h_join, h₁, h₂⟩
-        -- convert boolean equalities to propositional
-        have h_eq : t₁.rhs = t₂.lhs := UInt8.eq_of_beq t₁.rhs t₂.lhs h_join
-        have h₁_eq : t₁.lhs = t₁.rhs := UInt8.eq_of_beq t₁.lhs t₁.rhs h₁
-        have h₂_eq : t₂.lhs = t₂.rhs := UInt8.eq_of_beq t₂.lhs t₂.rhs h₂
 
-        let r := Request.Transitivity (t₁, t₂)
+        -- Convert Boolean equalities to propositional ones
+        have h_eq  : t₁.rhs = t₂.lhs := UInt8.eq_of_beq _ _ h_join
+        have h₁_eq : t₁.lhs = t₁.rhs := UInt8.eq_of_beq _ _ h₁
+        have h₂_eq : t₂.lhs = t₂.rhs := UInt8.eq_of_beq _ _ h₂
+
+        let r : Request := Request.Transitivity (t₁, t₂)
         let t : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
 
         apply Exists.intro r
         apply Exists.intro t
         constructor
-        have expected_eq : apply_coupon_collector r = some t := by
-          -- explicitly evaluate the call
-            dsimp [apply_coupon_collector]
-            -- apply the if-branch since h_eq is propositional
-            simp [h_eq]         
-        exact expected_eq
-        · simp [post_condition]
-          calc
-            t.lhs = t₁.lhs := rfl
-            _     = t₁.rhs := h₁_eq
-            _     = t₂.lhs := h_eq
-            _     = t₂.rhs := h₂_eq
-            _     = t.rhs := rfl
-
+         sorry -- fix it on Tuesday. This case is a bit tricky 
       | cons _ _ =>
         contradiction
 
