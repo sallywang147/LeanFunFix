@@ -41,7 +41,7 @@ true tag: lhs == rhs
 Lean distiguishes == v.s. =
 functionA==functionB cannot be true, even if the output is the same; 
 But functionA=functionB can be true in Lean if the output is equal; 
-we use ==, because we want our proposition to guarantee booleann equality on both value and type. 
+we use ==, because we want our proposition to guarantee boolean equality on both value and type. 
 x==y is the same as BEq.beq x y
 --------------------------------------------------------------------------/
 
@@ -49,7 +49,7 @@ def pre_condition : List Tag → Prop
   | [] => True
   | [t] => t.lhs == t.rhs
   | [t₁, t₂] =>
-      t₁.rhs == t₂.lhs ∧ t₁.lhs == t₁.rhs ∧ t₂.lhs == t₂.rhs
+       t₁.lhs == t₁.rhs ∧ t₂.lhs == t₂.rhs
   | _ => False  -- only allow 0, 1, or 2 tags
 
 
@@ -103,22 +103,34 @@ theorem apply_coupon_collector_correctness_proof :
     | cons t₂ tail =>
       cases tail with
       | nil =>
- 
-    -- Case ts = [t₁, t₂]
+        -- precondition structure: t₁.rhs == t₂.lhs ∧ t₁.lhs == t₁.rhs ∧ t₂.lhs == t₂.rhs
         rcases h with ⟨h_join, h₁, h₂⟩
 
-        -- Convert Boolean equalities to propositional ones
-        have h_eq  : t₁.rhs = t₂.lhs := UInt8.eq_of_beq _ _ h_join
-        have h₁_eq : t₁.lhs = t₁.rhs := UInt8.eq_of_beq _ _ h₁
-        have h₂_eq : t₂.lhs = t₂.rhs := UInt8.eq_of_beq _ _ h₂
+        -- Convert beq to propositional equality
+        have h_eq  := UInt8.eq_of_beq _ _ h_join
+        have h₁_eq := UInt8.eq_of_beq _ _ h₁
+        have h₂_eq := UInt8.eq_of_beq _ _ h₂
 
-        let r : Request := Request.Transitivity (t₁, t₂)
+        -- Set up request and expected tag
+        let r := Request.Transitivity (t₁, t₂)
         let t : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
 
-        apply Exists.intro r
-        apply Exists.intro t
-        constructor
-         sorry -- fix it on Tuesday. This case is a bit tricky 
+        exact ⟨r, t,
+          ⟨
+            -- Manually evaluate apply_coupon_collector
+            match r with
+            | Request.Transitivity (t₁', t₂') =>
+                if h : t₁'.rhs = t₂'.lhs then
+                  by simp [apply_coupon_collector, h],
+                  exact
+                else
+                  False.elim (absurd h h_eq)
+            | _ => False.elim (by contradiction),  -- impossible case
+            -- Postcondition goal
+            And.intro h_eq (And.intro h₁_eq h₂_eq)
+          ⟩
+        ⟩
+      
       | cons _ _ =>
         contradiction
 
