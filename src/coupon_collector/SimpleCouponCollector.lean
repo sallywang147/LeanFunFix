@@ -3,24 +3,26 @@
 -- import Paperproof --tool to visualize proofs (I recommend to our group)
 
 /-
-Revised implementation following Monday's meeting
+Revised implementatin following Monday's meeting
 -/
+
 
 structure Tag where 
   lhs : UInt8 
   rhs : UInt8 
 deriving Repr 
 
+
 -- Explicit operations user can request (same names as constructors)
 inductive Request --exposed to user
 | Identity : UInt8 → Request
 | Symmetry : Tag → Request
-| Transitivity: Prod Tag Tag → Request --a structure: multi-args
+| Transitivity: Tag → Tag → Request --a structure: multi-args
 
 def apply_coupon_collector : Request → Option Tag
 | Request.Identity x       => some ({lhs := x, rhs := x})
 | Request.Symmetry t       => some ({lhs := t.rhs, rhs := t.lhs})
-| Request.Transitivity (t₁, t₂) => if t₁.rhs == t₂.lhs then some {lhs := t₁.lhs, rhs := t₂.rhs} else none
+| Request.Transitivity t₁ t₂ => if t₁.rhs == t₂.lhs then some {lhs := t₁.lhs, rhs := t₂.rhs} else none
 
 
 
@@ -45,76 +47,80 @@ we use ==, because we want our proposition to guarantee boolean equality on both
 x==y is the same as BEq.beq x y
 --------------------------------------------------------------------------/
 
-def pre_condition : List Tag → Prop
-  | [] => True
-  | [t] => t.lhs == t.rhs
-  | [t₁, t₂] =>
-       t₁.lhs == t₁.rhs ∧ t₂.lhs == t₂.rhs
-  | _ => False  -- only allow 0, 1, or 2 tags
 
 
-def post_condition: List Tag → Prop 
-  | [] => True
-  | [out_t] => out_t.lhs == out_t.rhs
-  | _ => False
+/- -----------------------------------------------------------------------------
+Two ways to implement tag_invariant: check every tag in the Tag list that lhs==rhs
+
+def tag_check (ts : List Tag) : Bool :=
+  ts.countP (fun t => t.lhs == t.rhs) == ts.length
+
+From meeting: pre post should be the same 
+---------------------------------------------------------------------------------/
 
 
-axiom UInt8.eq_of_beq : -- == (enforcing type equality) in Lean is stronger than = (dooesn't enforce type equality)
-  ∀ (a b : UInt8), (a == b) = true → a = b
-
-def request_to_list : Request -> List Tag --helper function for proving pre
-  | Request.Identity x       => [{lhs := x, rhs := x}]
-  | Request.Symmetry t       => [{lhs := t.lhs, rhs := t.rhs}]
-  | Request.Transitivity (t₁, t₂) => [{lhs := t₁.lhs, rhs := t₁.rhs}, 
-                                      {lhs := t₂.lhs, rhs := t₂.rhs}]
-
-def option_to_list : Option Tag -> List Tag --helper function for proving post
-  | some out_tag => [out_tag]
-  | none => []  
+-- https://lean-lang.org/functional_programming_in_lean/getting-to-know/conveniences.html
+def all_tag_true(ts : List Tag) : Bool := -- inputs/ouputs are always true (lhs == rhs
+  ts.all λ t => t.lhs = t.rhs 
  
+-- define a member function for request
 
-theorem apply_coupon_collector_correctness_proof :
-  ∀ (r : Request),
-    pre_condition (request_to_list r) →
-    post_condition (option_to_list (apply_coupon_collector r))
-  := by
-  intro r
+def request_to_list : Request -> List Tag --helper function 
+  | Request.Identity _      => [] 
+  | Request.Symmetry t       => [t] 
+  | Request.Transitivity t₁ t₂ => [t₁, t₂]
+
+
+-- should we prove by requests? Name and values 
+theorem soundness_proof :
+    ∀ (r : Request), --for all user requests
+    all_tag_true (request_to_list r)→ -- if the tag inputs to requests are true, it implies that 
+    all_tag_true ((apply_coupon_collector r).toList) := --the tag outputs from apply_coupon_collector are true
+by
+  intros r h
   cases r with
-  | Identity x =>
-    intro _
-    simp [apply_coupon_collector, request_to_list, option_to_list, post_condition]
+  | Identity x =>   
+    simp [request_to_list, all_tag_true,  apply_coupon_collector]
+
 
   | Symmetry t =>
-    intro h
-    -- request_to_list (Symmetry t) = [t], so pre_condition [t] = t.lhs == t.rhs
-    have h_eq := UInt8.eq_of_beq t.lhs t.rhs h
-    simp [apply_coupon_collector, option_to_list, post_condition]
-    -- Result is { lhs := t.rhs, rhs := t.lhs }, need to show lhs == rhs
-    -- i.e. t.rhs == t.lhs = true
-    rw [h_eq]
+    simp [request_to_list, all_tag_true] at h
+    -- tag_check [t] = (t.lhs = t.rhs), so we can use h directly
+    simp [apply_coupon_collector, all_tag_true]
+    -- now the result is [ { lhs := t.rhs, rhs := t.lhs } ]
+    -- and we want to prove t.rhs = t.lhs, which is just the symmetry of h
+    exact Eq.symm h
+  | Transitivity t₁ t₂ =>
+    simp [request_to_list, all_tag_true] at h
+    -- h is: t₁.lhs = t₁.rhs ∧ t₂.lhs = t₂.rhs
 
-  | Transitivity pair =>
-    let t₁ := pair.fst
-    let t₂ := pair.snd
-    intro h
-    rcases h with ⟨h₁, h₂⟩
+    simp [apply_coupon_collector]
+    split
+    case Transitivity.isTrue h_eq => -- the case where t₁.rhs = t₂.lhs, the "join" succeeds
 
-    let h_join : t₁.rhs == t₂.lhs := by
-      have h₁_eq := UInt8.eq_of_beq t₁.lhs t₁.rhs h₁
-      have h₂_eq := UInt8.eq_of_beq t₂.lhs t₂.rhs  h₂
-      --have h_join_eq := UInt8.eq_of_beq _ _ h_join
-      exact 
-      let t : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
+      simp [Option.toList, all_tag_true]
+      -- We now need to prove that the resulting tag {lhs := t₁.lhs, rhs := t₂.rhs} is "true"
+      -- that is, (t₁.lhs = t₂.rhs)
 
-      apply And.intro
-      · simp [apply_coupon_collector, h_join]
-      · simp [option_to_list, post_condition]
-    rw [h₁_eq, h₂_eq]
+      -- From h : t₁.lhs = t₁.rhs ∧ t₂.lhs = t₂.rhs
+      -- and h_eq : t₁.rhs = t₂.lhs
 
-    simp [apply_coupon_collector, h_join, option_to_list, post_condition]
-    --rfl
-  
+      -- So we can prove:
+      calc
+        t₁.lhs = t₁.rhs := h.left
+        _      = t₂.lhs := h_eq
+        _      = t₂.rhs := h.right
 
+    case Transitivity.isFalse h_ne =>
+      -- the case where t₁.rhs ≠ t₂.lhs, so apply_coupon_collector returns none
+      simp [Option.toList]
+      -- none.toList = [], and all_tag_true [] is trivially true
+      trivial
+    
+
+      
+    
+    
 /-----------------
 Some tests below: 
 ------------------/
