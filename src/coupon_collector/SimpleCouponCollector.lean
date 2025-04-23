@@ -62,80 +62,58 @@ def post_condition: List Tag → Prop
 axiom UInt8.eq_of_beq : -- == (enforcing type equality) in Lean is stronger than = (dooesn't enforce type equality)
   ∀ (a b : UInt8), (a == b) = true → a = b
 
+def request_to_list : Request -> List Tag --helper function for proving pre
+  | Request.Identity x       => [{lhs := x, rhs := x}]
+  | Request.Symmetry t       => [{lhs := t.lhs, rhs := t.rhs}]
+  | Request.Transitivity (t₁, t₂) => [{lhs := t₁.lhs, rhs := t₁.rhs}, 
+                                      {lhs := t₂.lhs, rhs := t₂.rhs}]
 
-axiom beq_true_of_eq (a b : UInt8) (h : a = b) : 
-(a == b) = true 
+def option_to_list : Option Tag -> List Tag --helper function for proving post
+  | some out_tag => [out_tag]
+  | none => []  
+ 
 
 theorem apply_coupon_collector_correctness_proof :
-  ∀ (ts : List Tag), ∀ (x : UInt8),
-    pre_condition ts →
-    ∃ r t, apply_coupon_collector r = some t ∧ post_condition [t]
+  ∀ (r : Request),
+    pre_condition (request_to_list r) →
+    post_condition (option_to_list (apply_coupon_collector r))
   := by
-  intros ts x h
-  cases ts with
-  | nil =>
-      -- case ts = []
-      let r : Request := Request.Identity x
-      let t : Tag := { lhs := x, rhs := x }
-      apply Exists.intro r
-      apply Exists.intro t
-      constructor
-      · rfl
-      · simp [post_condition]
-        rfl
+  intro r
+  cases r with
+  | Identity x =>
+    intro _
+    simp [apply_coupon_collector, request_to_list, option_to_list, post_condition]
 
-  | cons t₁ rest =>
-    cases rest with
-    | nil =>
-      -- case ts = [t₁]
-      have h_eq : (t₁.lhs == t₁.rhs) = true := h
-      have t₁_eq : t₁.lhs = t₁.rhs := UInt8.eq_of_beq t₁.lhs t₁.rhs h_eq
-      let r := Request.Symmetry t₁
-      let t : Tag := { lhs := t₁.rhs, rhs := t₁.lhs }
-      apply Exists.intro r
-      apply Exists.intro t
-      constructor
-      · simp [apply_coupon_collector]
-        rfl
-      · simp [post_condition]
-        exact Eq.symm (t₁_eq)
+  | Symmetry t =>
+    intro h
+    -- request_to_list (Symmetry t) = [t], so pre_condition [t] = t.lhs == t.rhs
+    have h_eq := UInt8.eq_of_beq t.lhs t.rhs h
+    simp [apply_coupon_collector, option_to_list, post_condition]
+    -- Result is { lhs := t.rhs, rhs := t.lhs }, need to show lhs == rhs
+    -- i.e. t.rhs == t.lhs = true
+    rw [h_eq]
 
-    | cons t₂ tail =>
-      cases tail with
-      | nil =>
-        -- precondition structure: t₁.rhs == t₂.lhs ∧ t₁.lhs == t₁.rhs ∧ t₂.lhs == t₂.rhs
-        rcases h with ⟨h_join, h₁, h₂⟩
+  | Transitivity pair =>
+    let t₁ := pair.fst
+    let t₂ := pair.snd
+    intro h
+    rcases h with ⟨h₁, h₂⟩
 
-        -- Convert beq to propositional equality
-        have h_eq  := UInt8.eq_of_beq _ _ h_join
-        have h₁_eq := UInt8.eq_of_beq _ _ h₁
-        have h₂_eq := UInt8.eq_of_beq _ _ h₂
+    let h_join : t₁.rhs == t₂.lhs := by
+      have h₁_eq := UInt8.eq_of_beq t₁.lhs t₁.rhs h₁
+      have h₂_eq := UInt8.eq_of_beq t₂.lhs t₂.rhs  h₂
+      --have h_join_eq := UInt8.eq_of_beq _ _ h_join
+      exact 
+      let t : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
 
-        -- Set up request and expected tag
-        let r := Request.Transitivity (t₁, t₂)
-        let t : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
+      apply And.intro
+      · simp [apply_coupon_collector, h_join]
+      · simp [option_to_list, post_condition]
+    rw [h₁_eq, h₂_eq]
 
-        exact ⟨r, t,
-          ⟨
-            -- Manually evaluate apply_coupon_collector
-            match r with
-            | Request.Transitivity (t₁', t₂') =>
-                if h : t₁'.rhs = t₂'.lhs then
-                  by simp [apply_coupon_collector, h],
-                  exact
-                else
-                  False.elim (absurd h h_eq)
-            | _ => False.elim (by contradiction),  -- impossible case
-            -- Postcondition goal
-            And.intro h_eq (And.intro h₁_eq h₂_eq)
-          ⟩
-        ⟩
-      
-      | cons _ _ =>
-        contradiction
-
-
-
+    simp [apply_coupon_collector, h_join, option_to_list, post_condition]
+    --rfl
+  
 
 /-----------------
 Some tests below: 
