@@ -90,6 +90,7 @@ by
     -- now the result is [ { lhs := t.rhs, rhs := t.lhs } ]
     -- and we want to prove t.rhs = t.lhs, which is just the symmetry of h
     exact Eq.symm h
+    
   | Transitivity t₁ t₂ =>
     simp [request_to_list, all_tag_true] at h
     -- h is: t₁.lhs = t₁.rhs ∧ t₂.lhs = t₂.rhs
