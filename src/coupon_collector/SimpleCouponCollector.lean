@@ -71,6 +71,10 @@ def request_to_list : Request -> List Tag --helper function
   | Request.Transitivity t₁ t₂ => [t₁, t₂]
 
 
+@[simp]
+theorem List.all_singleton {α : Type} (p : α → Bool) (x : α) :
+    [x].all p = p x := by
+  simp [List.all]
 -- should we prove by requests? Name and values 
 theorem soundness_proof :
     ∀ (r : Request), --for all user requests
@@ -92,26 +96,29 @@ by
     exact Eq.symm h
 
   | Transitivity t₁ t₂ =>
-    simp [request_to_list, all_tag_true] at h
-  -- h : t₁.lhs = t₁.rhs ∧ t₂.lhs = t₂.rhs
-
-    simp [apply_coupon_collector]
-    by_cases cond : t₁.rhs == t₂.lhs
-    -- t₁.rhs == t₂.lhs
-    case pos =>
-      simp [cond, Option.toList, all_tag_true]
-      intro x hx
-      have x_eq : x = { lhs := t₁.lhs, rhs := t₂.rhs } := List.mem_singleton.mp hx
-      subst x_eq
+  simp [request_to_list, all_tag_true] at h
+  by_cases cond : t₁.rhs == t₂.lhs
+  case pos =>
+    let expected : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
+    have h_eq : t₁.rhs = t₂.lhs := of_decide_eq_true cond
+    have lhs_eq_rhs : expected.lhs = expected.rhs := by
       calc
         t₁.lhs = t₁.rhs := h.left
-        _      = t₂.lhs := of_decide_eq_true cond
+        _      = t₂.lhs := h_eq
         _      = t₂.rhs := h.right
-    -- t₁.rhs != t₂.lhs
-    case neg =>
-      simp [cond, Option.toList]
-      exact
-        
+
+    simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
+    rw [lhs_eq_rhs]
+
+    -- now show that this tag passes the tag_check
+   -- simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
+    
+    --exact
+  case neg =>
+    simp [apply_coupon_collector, cond, Option.toList]
+    rfl
+
+    
 
       
     
