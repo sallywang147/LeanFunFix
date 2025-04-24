@@ -1,6 +1,6 @@
 -- This module serves as the root of the `CouponCollector` library.
 -- Import modules here that should be built as part of the library.
--- import Paperproof --tool to visualize proofs (I recommend to our group)
+import Paperproof --tool to visualize proofs (I recommend to our group)
 
 /-
 Revised implementatin following Monday's meeting
@@ -74,7 +74,7 @@ def request_to_list : Request -> List Tag --helper function
 -- should we prove by requests? Name and values 
 theorem soundness_proof :
     ∀ (r : Request), --for all user requests
-    all_tag_true (request_to_list r)→ -- if the tag inputs to requests are true, it implies that 
+    all_tag_true (request_to_list r) → -- if the tag inputs to requests are true, it implies that 
     all_tag_true ((apply_coupon_collector r).toList) := --the tag outputs from apply_coupon_collector are true
 by
   intros r h
@@ -90,47 +90,41 @@ by
     -- now the result is [ { lhs := t.rhs, rhs := t.lhs } ]
     -- and we want to prove t.rhs = t.lhs, which is just the symmetry of h
     exact Eq.symm h
-    
+
   | Transitivity t₁ t₂ =>
     simp [request_to_list, all_tag_true] at h
-    -- h is: t₁.lhs = t₁.rhs ∧ t₂.lhs = t₂.rhs
+  -- h : t₁.lhs = t₁.rhs ∧ t₂.lhs = t₂.rhs
 
     simp [apply_coupon_collector]
-    split
-    case Transitivity.isTrue h_eq => -- the case where t₁.rhs = t₂.lhs, the "join" succeeds
-
-      simp [Option.toList, all_tag_true]
-      -- We now need to prove that the resulting tag {lhs := t₁.lhs, rhs := t₂.rhs} is "true"
-      -- that is, (t₁.lhs = t₂.rhs)
-
-      -- From h : t₁.lhs = t₁.rhs ∧ t₂.lhs = t₂.rhs
-      -- and h_eq : t₁.rhs = t₂.lhs
-
-      -- So we can prove:
+    by_cases cond : t₁.rhs == t₂.lhs
+    -- t₁.rhs == t₂.lhs
+    case pos =>
+      simp [cond, Option.toList, all_tag_true]
+      intro x hx
+      have x_eq : x = { lhs := t₁.lhs, rhs := t₂.rhs } := List.mem_singleton.mp hx
+      subst x_eq
       calc
         t₁.lhs = t₁.rhs := h.left
-        _      = t₂.lhs := h_eq
+        _      = t₂.lhs := of_decide_eq_true cond
         _      = t₂.rhs := h.right
-
-    case Transitivity.isFalse h_ne =>
-      -- the case where t₁.rhs ≠ t₂.lhs, so apply_coupon_collector returns none
-      simp [Option.toList]
-      -- none.toList = [], and all_tag_true [] is trivially true
-      trivial
-    
+    -- t₁.rhs != t₂.lhs
+    case neg =>
+      simp [cond, Option.toList]
+      exact
+        
 
       
     
     
-/-----------------
+/- ----------------
 Some tests below: 
 ------------------/
 -- We can write arbitrary code in lean, but it will not satisfy the pre-conditions 
-def evilTag (x : UInt8) : Tag := { lhs := x, rhs := 50 }
+ --def evilTag (x : UInt8) : Tag := { lhs := x, rhs := 50 }
 
 -- now the evilTag will not create a tag satisfying either of our pre-conditions
 
-pre_condition r (evilTag x) x
+--pre_condition r (evilTag x) x
 
 
 -- completeness by proving the converse: if not valid tags/requests -> apply returns no
