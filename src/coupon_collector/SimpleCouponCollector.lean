@@ -71,11 +71,6 @@ def request_to_list : Request -> List Tag --helper function
   | Request.Transitivity t₁ t₂ => [t₁, t₂]
 
 
-@[simp]
-theorem List.all_singleton {α : Type} (p : α → Bool) (x : α) :
-    [x].all p = p x := by
-  simp [List.all]
--- should we prove by requests? Name and values 
 theorem soundness_proof :
     ∀ (r : Request), --for all user requests
     all_tag_true (request_to_list r) → -- if the tag inputs to requests are true, it implies that 
