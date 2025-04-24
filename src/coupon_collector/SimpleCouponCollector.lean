@@ -96,24 +96,21 @@ by
     exact Eq.symm h
 
   | Transitivity t₁ t₂ =>
+  -- simplify h by decomposing  a request list via all_tag_true: unfold a list of true tag
   simp [request_to_list, all_tag_true] at h
   by_cases cond : t₁.rhs == t₂.lhs
   case pos =>
-    let expected : Tag := { lhs := t₁.lhs, rhs := t₂.rhs }
-    have h_eq : t₁.rhs = t₂.lhs := of_decide_eq_true cond
-    have lhs_eq_rhs : expected.lhs = expected.rhs := by
+    let expected : Tag := { lhs := t₁.lhs, rhs := t₂.rhs } -- proof goal 
+    have h_eq : t₁.rhs = t₂.lhs := of_decide_eq_true cond  -- transitivity condition 
+    have lhs_eq_rhs : expected.lhs = expected.rhs := by 
       calc
         t₁.lhs = t₁.rhs := h.left
         _      = t₂.lhs := h_eq
         _      = t₂.rhs := h.right
 
-    simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
+    simp [apply_coupon_collector, Option.toList, cond, all_tag_true]
     rw [lhs_eq_rhs]
 
-    -- now show that this tag passes the tag_check
-   -- simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
-    
-    --exact
   case neg =>
     simp [apply_coupon_collector, cond, Option.toList]
     rfl
