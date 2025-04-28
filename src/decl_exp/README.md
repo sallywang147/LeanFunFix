@@ -6,6 +6,7 @@ After untar the LFI pre-built binaries, the command used:
 clang -I[lib] -S [filename].c -o [filename]Assembly.s 
 lfi-run -a amd64 --output LFI[filename].s --poc [filename].s
 ```
+The assembly .s files with LFI pre-fix should be compatible with decl/lfi
 
 Or just to observe how the intermediate steps of lfi-run works, we can obtain a mix of C/assembly code from below 
 
