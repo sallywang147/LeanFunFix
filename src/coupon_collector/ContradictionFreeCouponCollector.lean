@@ -27,7 +27,7 @@ In Zulip comment, Keith mentioned that
    Thus, we can rephrase the proof of "contradition-free inputs => apply_coupon_collector cannot derive contradiction" below: 
    a list of equivalence tags as input => a list of equivalence tags as output form apply_coupon_collector
 -------------------------------------------------------------------/
-
+-- import Paperproof
 -- Σ dependent type pair documentation: 
 -- https://leanprover.github.io/theorem_proving_in_lean/dependent_type_theory.html
 structure Tag (Value : Type) where -- I'm unsure if we'd like Tag in this format
@@ -109,8 +109,10 @@ theorem contradiction_free_preserved
             t₁.lhs.2 = t₁.rhs.2 := eq₁
             _ = t₂.lhs.2 := by rw [h_eq]
             _ = t₂.rhs.2 := eq₂
-
+    
         case neg =>
           simp [apply_coupon_collector, Option.toList, contradiction_free_tags, cond]
+       
+  
           
       
