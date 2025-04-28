@@ -1,19 +1,44 @@
 /- ----------------------------------------------------------------
 We expand SimpleCouponCollector.lean to include Tags of Name (String) ->Value 
 -------------------------------------------------------------------/
-import Paperproof
+--import Paperproof
 import Std.Data.HashMap 
 open Std
 
 /-----------------------------------------------------------------
 First way: immutable kv store: 
 
-0. instantiating KVStore: Name -> Nat 
-  0a. We can also instantiating KVStoreString: Name->String
+0. we can have Tag and KVStore in two ways as shown below, which is prefrered, or neither? 
 
-1. It's probably clumsy to instantiate a value type each time 
-Do we care about how portable the value type should be for KVStore? 
+We show proofs for both tag and kv_store designs below. 
+The second design is at the bottom of the file after we test the first design 
+
+First design: tag only contains the key as String. Value is stored in a different HashMap
+
+    def KVStore (Value : Type) := HashMap String Value
+
+    structure Tag where
+      lhs : String
+      rhs : String
+
+Second design: Name functions like a key value store
+
+    structure Name (TagType : Type) where 
+      id : String
+      value : TagType
+    deriving Repr
+
+    structure Alternative_Tag (TagType : Type) where
+      lhs : Name TagType
+      rhs : Name TagType
+    deriving Repr
+
 -------------------------------------------------------------------/
+
+/- ---------------------------
+first tag, kv_store design 
+-------------------------------/
+
 -- The global Key-Value Store datastructure: maps Name → Value
 def KVStore (Value : Type) := HashMap String Value
 
@@ -22,7 +47,6 @@ structure Tag where
   lhs : String --String points to a Value in KVStore
   rhs : String
 deriving Repr, BEq, Hashable, Repr, DecidableEq
-
 
  inductive Request --exposed to user
  | Identity : String → Request
@@ -39,6 +63,14 @@ deriving Repr, BEq, Hashable, Repr, DecidableEq
    | Request.Identity _      => [] 
    | Request.Symmetry t       => [t] 
    | Request.Transitivity t₁ t₂ => [t₁, t₂]
+
+
+-- user should invoke this fuuction to get an equivalence tag back 
+def create_equivalence_tag (store : KVStore Value) [BEq Value] (t : Tag) : Option Tag := 
+  if store.get? t.lhs == store.get? t.rhs then
+    some {lhs := t.lhs, rhs := t.rhs}
+  else
+    none 
 
 
 -- Define "equivalence under store" relation
@@ -107,8 +139,96 @@ def t₃ : Tag := { lhs := "apple", rhs := "dog" }
 #eval all_tag_true exampleStore ((apply_coupon_collector r₂).toList) -- true
 
 
+/-------------------------------------
+Alternative tag, kv_store design 
+--------------------------------------/
+structure Name (TagType : Type) where
+  id : String
+  value : TagType
+deriving Repr
+
+structure Alternative_Tag (TagType : Type) where
+  lhs : Name TagType
+  rhs : Name TagType
+deriving Repr
+
+-- sample alternative tags
+def n₁ : Name Nat := { id := "apple", value := 42 }
+def n₂ : Name Nat := { id := "banana", value := 42 }
+def t : Alternative_Tag Nat := { lhs := n₁, rhs := n₂ }
+
+def alternativeTagEquivalent {Value : Type} [BEq Value] (t : Alternative_Tag Value) : Bool :=
+  t.lhs.value == t.rhs.value
 
 
+inductive Alternative_Request (TagType : Type)
+ | Identity : Name TagType → Alternative_Request TagType
+ | Symmetry : Alternative_Tag TagType → Alternative_Request TagType
+ | Transitivity : Alternative_Tag TagType → Alternative_Tag TagType → Alternative_Request TagType
 
+def apply_alternative_coupon_collector {TagType : Type} [BEq TagType] : 
+Alternative_Request TagType → Option (Alternative_Tag TagType)
+ | Alternative_Request.Identity n => some { lhs := n, rhs := n }
+ | Alternative_Request.Symmetry t => some { lhs := t.rhs, rhs := t.lhs }
+ | Alternative_Request.Transitivity t₁ t₂ =>
+    if t₁.rhs.value == t₂.lhs.value then
+      some { lhs := t₁.lhs, rhs := t₂.rhs }
+    else
+      none
 
- 
+def alternative_request_to_list {TagType : Type} : 
+Alternative_Request TagType → List (Alternative_Tag TagType)
+ | Alternative_Request.Identity _ => []
+ | Alternative_Request.Symmetry t => [t]
+ | Alternative_Request.Transitivity t₁ t₂ => [t₁, t₂]
+
+def all_alternative_tag_true {TagType : Type} [BEq TagType] 
+(ts : List (Alternative_Tag TagType)) : Bool :=
+  ts.all λ t => t.lhs.value == t.rhs.value
+
+-- proof structure is similar as the first design 
+theorem alternative_soundness_proof :
+  ∀ (r : Alternative_Request Nat), -- provide Nat as a dummy type, similar to a dummy KVStore above
+    all_alternative_tag_true (alternative_request_to_list r) →
+    all_alternative_tag_true ((apply_alternative_coupon_collector r).toList)
+  := by
+
+  intro r h_pre
+  cases r with
+  | Identity x =>
+      simp [
+      alternative_request_to_list,
+      all_alternative_tag_true, 
+      apply_alternative_coupon_collector,
+      Option.toList] 
+
+  | Symmetry t =>
+      simp [
+      alternative_request_to_list,
+      all_alternative_tag_true, 
+      apply_alternative_coupon_collector,
+      Option.toList] at h_pre
+      simp [apply_alternative_coupon_collector, 
+      all_alternative_tag_true]
+      exact Eq.symm h_pre
+  
+  | Transitivity t₁ t₂ =>
+      simp [alternative_request_to_list, all_alternative_tag_true] at h_pre
+      cases h_pre with
+      | intro h₁ h₂ =>
+        by_cases cond : t₁.rhs.value == t₂.lhs.value
+        case pos =>
+          have h_eq : t₁.rhs.value = t₂.lhs.value := by
+            apply eq_of_beq
+            exact cond
+          simp [apply_alternative_coupon_collector, Option.toList, all_alternative_tag_true, cond]
+          have eq₁ : t₁.lhs.value = t₁.rhs.value := h₁
+          have eq₂ : t₂.lhs.value = t₂.rhs.value := h₂
+          calc
+            t₁.lhs.value = t₁.rhs.value := eq₁
+            _ = t₂.lhs.value := by rw [h_eq]
+            _ = t₂.rhs.value := eq₂
+
+        case neg =>
+          simp [apply_alternative_coupon_collector, Option.toList, all_alternative_tag_true, cond]
+          
