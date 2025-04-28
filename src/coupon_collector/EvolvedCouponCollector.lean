@@ -8,7 +8,8 @@ open Std
 /-----------------------------------------------------------------
 First way: immutable kv store: 
 
-0. we can have Tag and KVStore in two ways as shown below, which is prefrered, or neither? 
+0. we can have Tag and KVStore in two ways as shown below.
+Which one is prefrered, or neither is good? 
 
 We show proofs for both tag and kv_store designs below. 
 The second design is at the bottom of the file after we test the first design 
@@ -20,6 +21,17 @@ First design: tag only contains the key as String. Value is stored in a differen
     structure Tag where
       lhs : String
       rhs : String
+
+Fist design example use case: 
+def exampleStore : KVStore Nat :=
+  (HashMap.empty : KVStore Nat)
+    |>.insert "apple" 42
+    |>.insert "banana" 42
+    |>.insert "carrot" 2
+    |>.insert "dog" 3
+
+equivalence tag below
+def t₃ : Tag := { lhs := "apple", rhs := "banana" }
 
 Second design: Name functions like a key value store
 
@@ -33,6 +45,10 @@ Second design: Name functions like a key value store
       rhs : Name TagType
     deriving Repr
 
+Second design example use case: for equivalence tag {"apple", "banana"}
+def n₁ : Name Nat := { id := "apple", value := 42 }
+def n₂ : Name Nat := { id := "banana", value := 42 }
+def t : Alternative_Tag Nat := { lhs := n₁, rhs := n₂ }
 -------------------------------------------------------------------/
 
 /- ---------------------------
