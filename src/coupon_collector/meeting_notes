@@ -1,0 +1,38 @@
+sending something over the network; 
+distributed stores: how to compute 
+
+policy decision: where to store/write things
+
+Do we want to users to write programs where to store an object? 
+Do we want the blobs/scheduler in trusted kernel/or linux container? 
+
+A local blob: a local 
+
+replication/distribution happens in fix
+
+Coupon collector/evaluator: 
+
+Do we want to start distributed/ 
+developed in Fix? 
+
+//in Linux: we don't delete anything: there is non in memory objects; Right now, we delete 
+on disks, but not in memory 
+
+//do 1+1 in Fix on Arca; how to run something on Arca. Wasm program becomes 
+an F blob (fix calls to get arguments)
+
+//Fix program returns 7: Fix/Linux codebase; in memory linker; When a prgoram returns 7; it returns inn the fix API; 
+
+Fix shell 
+
+Arca makes a system call 
+
+Cross-node garbage collection: references cross nodes; 10 nodes in cluster; 5 nodes contain a blob want to reference; As long as
+one of them is still alive; 
+
+redundant ways: reference countinig tracks when a blob is alive/referenced 
+
+For a node to delete something, as long as 
+other nodes referennce to the local blob 
+
+Blob scheduler: C++ 

@@ -32,8 +32,8 @@ structure Tag where
   rhs : String
 deriving Repr, BEq, Hashable, Repr, DecidableEq
 
-structure KVStore (α : Type) where -- mapping String in 
-  mapping : String → Option α
+structure KVStore where -- mapping String in: object store 
+  mapping : String → Option Nat
   -- The store defines a partial function from keys (strings) to values (of type α)
 
 /-
@@ -41,56 +41,10 @@ enforcing equivalence invariant of a tag:
 lhs->value == rhs -> value, 
 where lhs != rhs or lhs == rhs
 -/
-def Tag.EquivalenceInvariant {α : Type} [BEq α] 
-(store : KVStore α) (t : Tag) : Bool :=
+def Tag.EquivalenceInvariant
+(store : KVStore) (t : Tag) : Bool :=
   store.mapping t.lhs == store.mapping t.rhs
 
--- Lookup function for a tag in the store
-def Tag.LookUp {α : Type} (store : KVStore α) (t : Tag) : 
-Option (α × α) :=
-  match store.mapping t.lhs, store.mapping t.rhs with
-  | some v₁, some v₂ => some (v₁, v₂)
-  | _, _ => none
-
-
--- test case of Tag.LookUp
-def testStore : KVStore Nat :=
-  { mapping := λ key =>
-      if key == "A" then some 20
-      else if key == "B" then some 20
-      else none }
-
-def testTag : Tag := { lhs := "A", rhs := "B" }
-
-#eval Tag.LookUp testStore testTag
--- Output: some (20, 20)
-
-def Tag.Insert {α : Type} (t : Tag) (v₁ v₂ : α) (s : KVStore α) : 
-KVStore α :=
-  { mapping := λ key =>
-      if key == t.lhs then some v₁
-      else if key == t.rhs then some v₂
-      else s.mapping key }
-
-
--- test cases of Tag.Insert
-def baseStore : KVStore Nat :=
-  { mapping := λ key => if key == "z" then some 42 else none }
-
-def t : Tag := { lhs := "x", rhs := "y" }
-
-def updatedStore := Tag.Insert t 10 20 baseStore
-
-#eval updatedStore.mapping "x"  -- some 10
-#eval updatedStore.mapping "y"  -- some 20
-#eval updatedStore.mapping "z"  -- some 42
-#eval updatedStore.mapping "w"  -- none
-
-
-def Tag.Delete {α : Type} (t : Tag) (s : KVStore α) : KVStore α :=
-  { mapping := λ key =>
-      if key == t.lhs ∨ key == t.rhs then none
-      else s.mapping key }
 
 
 -- same request,apply_coupon_collector functions below: 
@@ -105,77 +59,31 @@ def Tag.Delete {α : Type} (t : Tag) (s : KVStore α) : KVStore α :=
  | Request.Transitivity t₁ t₂ => if t₁.rhs == t₂.lhs then some {lhs := t₁.lhs, rhs := t₂.rhs} else none
  
 
-def request_to_list : Request → List Tag
+def Request.toList : Request -> List Tag
   | Request.Identity _ => []
   | Request.Symmetry t => [t]
   | Request.Transitivity t₁ t₂ => [t₁, t₂]
 
 
 -- all tags uphold the equivalence invariant
-def all_tag_true {α : Type} [BEq α] (store : KVStore α) : List Tag → Bool
-  | [] => true
-  | t :: ts => Tag.EquivalenceInvariant store t && all_tag_true store ts
+def all_tag_true (store : KVStore) (ts: List Tag) : Bool :=
+  ts.all λ t => Tag.EquivalenceInvariant store t 
 
 /-
 WARNING: the proof below is still buggy in the thrid case
 In debugging mode 
 -/
 
+/-
+a list of equivalence tags as input: 
 
-theorem soundness_proof
-  {α : Type} [BEq α] :
-  ∀ (r : Request), ∃ (store : KVStore α),
-    all_tag_true store (request_to_list r) →
+-/
+
+theorem soundness_proof : 
+  ∀ (r : Request), 
+   ∀ (store : KVStore),
+    all_tag_true store r.toList  →
     all_tag_true store (Option.toList (apply_coupon_collector r)) := by
-  intro r
-  cases r with
-  | Identity x =>
-      let store : KVStore α := { mapping := fun _ => none } -- maybe shaky: can we set default store to a dummy none?
-      exists store
-      intro 
-      simp only [request_to_list, all_tag_true, apply_coupon_collector, Option.toList]
-      -- Goal is: all_tag_true store [{ lhs := x, rhs := x }] = true
-      -- Unfold manually
-      show (store.mapping x == store.mapping x) && true = true
-      simp
-      rfl
-    
-  | Symmetry t =>
-      --let v : α := 
-      let store : KVStore α :=
-        { mapping := fun _ => none }
-      exists store
-      intro h
-      simp [request_to_list, all_tag_true] at h
-      simp [apply_coupon_collector, Option.toList, Tag.EquivalenceInvariant]
-      exact Eq.symm h
-
-  | Transitivity t₁ t₂ =>
-      let store : KVStore α :=
-       { mapping := fun _ => none }
-      exists store
-      intro h
-      simp [request_to_list, all_tag_true] at h
-      simp [apply_coupon_collector, Option.toList]
-      by_cases cond : t₁.rhs == t₂.lhs 
-      case pos =>
-        have ⟨h₁, h₂⟩ : Tag.EquivalenceInvariant store t₁ = true ∧
-                   Tag.EquivalenceInvariant store t₂ = true :=
-          match h with
-          | rfl => ⟨rfl, rfl⟩
-        let h₁ := this.left
-        let h₂ := this.right
-        show Tag.EquivalenceInvariant store { lhs := t₁.lhs, rhs := t₂.rhs } = true
-        simp [Tag.EquivalenceInvariant]
-        calc
-          store.mapping t₁.lhs
-              = store.mapping t₁.rhs := by rw [h₁]
-          _   = store.mapping t₂.lhs := by rw [h_eq]
-          _   = store.mapping t₂.rhs := by rw [h₂]
-        -- Now store.mapping t₁.lhs = store.mapping t₂.rhs
-        -- So equality holds
-        simp
-      case neg =>
-        simp [cond]
-        --simp [apply_coupon_collector, Option.toList]
-    
+  intros 
+  simp [all_tag_true] at *
+ 
