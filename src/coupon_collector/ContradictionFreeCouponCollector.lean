@@ -114,6 +114,7 @@ WARNING: the proof below is still buggy in the second and thrid case
 In debugging mode 
 -/
 
+
 theorem soundness_proof
   {α : Type} [BEq α] :
   ∀ (r : Request), ∃ (store : KVStore α),
@@ -124,7 +125,7 @@ theorem soundness_proof
   | Identity x =>
       let store : KVStore α := { mapping := fun _ => none } -- maybe shaky: can we set default store to a dummy none?
       exists store
-      intro _
+      intro 
       simp only [request_to_list, all_tag_true, apply_coupon_collector, Option.toList]
       -- Goal is: all_tag_true store [{ lhs := x, rhs := x }] = true
       -- Unfold manually
@@ -133,9 +134,9 @@ theorem soundness_proof
       rfl
     
   | Symmetry t =>
+      --let v : α := 
       let store : KVStore α :=
-        { mapping := fun k =>
-            if k == t.lhs ∨ k == t.rhs then some default else none }
+        { mapping := fun _ => none }
       exists store
       intro h
       simp [request_to_list, all_tag_true] at h
@@ -144,15 +145,14 @@ theorem soundness_proof
 
   | Transitivity t₁ t₂ =>
       let store : KVStore α :=
-        { mapping := fun k =>
-            if k == t₁.lhs ∨ k == t₁.rhs ∨ k == t₂.lhs ∨ k == t₂.rhs then some default else none }
+       { mapping := fun _ => none }
       exists store
       intro h
       simp [request_to_list, all_tag_true] at h
       simp [apply_coupon_collector, Option.toList]
-      by_cases cond : t₁.rhs == t₂.lhs
-      · simp [cond]
+      by_cases cond : t₁.rhs == t₂.lhs 
+        · simp [cond]
         simp [Tag.EquivalenceInvariant]
         rfl
-      · simp [cond]
+       · simp [cond]
 
