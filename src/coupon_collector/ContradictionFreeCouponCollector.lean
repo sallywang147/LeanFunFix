@@ -110,7 +110,7 @@ def all_tag_true {α : Type} [BEq α] (store : KVStore α) : List Tag → Bool
   | t :: ts => Tag.EquivalenceInvariant store t && all_tag_true store ts
 
 /-
-WARNING: the proof below is still buggy in the second and thrid case
+WARNING: the proof below is still buggy in the thrid case
 In debugging mode 
 -/
 
