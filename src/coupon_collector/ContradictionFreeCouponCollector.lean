@@ -2,6 +2,13 @@
 We expand SimpleCouponCollector.lean to include Tags of Name (String) ->Value 
 w/out using external key value store data structure 
 
+If we do not want to reference external kv store: 
+structure Tag where
+  lhs : String -- each key is String type for now
+  rhs : String
+  equivalence: Bool 
+deriving Repr, BEq, Hashable, Repr, DecidableEq
+
   1. Are we okay with the following definitions? Do they seem sketchy to you? 
   
   the "contradiction-free" definition feels very similar to the second design in
@@ -28,6 +35,15 @@ deriving Repr, BEq, Hashable, Repr, DecidableEq
 structure KVStore (α : Type) where -- mapping String in 
   mapping : String → Option α
   -- The store defines a partial function from keys (strings) to values (of type α)
+
+/-
+enforcing equivalence invariant of a tag:
+lhs->value == rhs -> value, 
+where lhs != rhs or lhs == rhs
+-/
+def Tag.EquivalenceInvariant {α : Type} [BEq α] 
+(store : KVStore α) (t : Tag) : Bool :=
+  store.mapping t.lhs == store.mapping t.rhs
 
 -- Lookup function for a tag in the store
 def Tag.LookUp {α : Type} (store : KVStore α) (t : Tag) : 
@@ -76,15 +92,6 @@ def Tag.Delete {α : Type} (t : Tag) (s : KVStore α) : KVStore α :=
       if key == t.lhs ∨ key == t.rhs then none
       else s.mapping key }
 
-/-
-enforcing equivalence invariant of a tag:
-lhs->value == rhs -> value, 
-where lhs != rhs or lhs == rhs
--/
-
-def Tag.EquivalenceInvariant {α : Type} [BEq α] 
-(store : KVStore α) (t : Tag) : Bool :=
-  store.mapping t.lhs == store.mapping t.rhs
 
 -- same request,apply_coupon_collector functions below: 
  inductive Request --exposed to user
@@ -151,8 +158,24 @@ theorem soundness_proof
       simp [request_to_list, all_tag_true] at h
       simp [apply_coupon_collector, Option.toList]
       by_cases cond : t₁.rhs == t₂.lhs 
-        · simp [cond]
+      case pos =>
+        have ⟨h₁, h₂⟩ : Tag.EquivalenceInvariant store t₁ = true ∧
+                   Tag.EquivalenceInvariant store t₂ = true :=
+          match h with
+          | rfl => ⟨rfl, rfl⟩
+        let h₁ := this.left
+        let h₂ := this.right
+        show Tag.EquivalenceInvariant store { lhs := t₁.lhs, rhs := t₂.rhs } = true
         simp [Tag.EquivalenceInvariant]
-        rfl
-       · simp [cond]
-
+        calc
+          store.mapping t₁.lhs
+              = store.mapping t₁.rhs := by rw [h₁]
+          _   = store.mapping t₂.lhs := by rw [h_eq]
+          _   = store.mapping t₂.rhs := by rw [h₂]
+        -- Now store.mapping t₁.lhs = store.mapping t₂.rhs
+        -- So equality holds
+        simp
+      case neg =>
+        simp [cond]
+        --simp [apply_coupon_collector, Option.toList]
+    
