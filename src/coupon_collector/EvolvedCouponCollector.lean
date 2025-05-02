@@ -1,53 +1,16 @@
-/- ----------------------------------------------------------------
-We expand SimpleCouponCollector.lean to include Tags of Name (String) ->Value 
--------------------------------------------------------------------/
 --import Paperproof
-import Std.Data.HashMap 
-open Std
 
-/-----------------------------------------------------------------
-First way: immutable kv store: 
-
-0. we can have Tag and KVStore in two ways as shown below.
-Which one is prefrered, or neither is good? 
-
-We show proofs for both tag and kv_store designs below. 
-The second design is at the bottom of the file after we test the first design 
-
-First design: tag only contains the key as String. Value is stored in a different HashMap
-
-    def KVStore (Value : Type) := HashMap String Value
-
-    structure Tag where
-      lhs : String
-      rhs : String
-
-Fist design example use case: 
-def exampleStore : KVStore Nat :=
-  (HashMap.empty : KVStore Nat)
-    |>.insert "apple" 42
-    |>.insert "banana" 42
-    |>.insert "carrot" 2
-    |>.insert "dog" 3
-
-equivalence tag below
-def t₃ : Tag := { lhs := "apple", rhs := "banana" }
-
--------------------------------------------------------------------/
-
-/- ---------------------------
-first tag, kv_store design 
--------------------------------/
-
--- The global Key-Value Store datastructure: maps Name → Value
-def KVStore (Value : Type) := HashMap String Value
-
--- A Tag points to two Strings (keys only, no values inside)
+-- each key is String type for now
 structure Tag where
-  lhs : String --String points to a Value in KVStore
+  lhs : String 
   rhs : String
-deriving Repr, BEq, Hashable, Repr, DecidableEq
+deriving Repr, BEq, DecidableEq
 
+
+structure KVStore where 
+  mapping : String → Option Nat
+
+-- same request,apply_coupon_collector functions below: 
  inductive Request --exposed to user
  | Identity : String → Request
  | Symmetry : Tag → Request
@@ -59,82 +22,69 @@ deriving Repr, BEq, Hashable, Repr, DecidableEq
  | Request.Transitivity t₁ t₂ => if t₁.rhs == t₂.lhs then some {lhs := t₁.lhs, rhs := t₂.rhs} else none
  
 
- def request_to_list : Request -> List Tag --helper function 
-   | Request.Identity _      => [] 
-   | Request.Symmetry t       => [t] 
-   | Request.Transitivity t₁ t₂ => [t₁, t₂]
+def Request.toList : Request -> List Tag
+  | Request.Identity _ => []
+  | Request.Symmetry t => [t]
+  | Request.Transitivity t₁ t₂ => [t₁, t₂]
+
+def all_tag_true (store : KVStore) (ts: List Tag) : Bool :=
+  ts.all λ t => store.mapping t.lhs == store.mapping t.rhs
 
 
--- user should invoke this fuuction to get an equivalence tag back 
-def create_equivalence_tag (store : KVStore Value) [BEq Value] (t : Tag) : Option Tag := 
-  if store.get? t.lhs == store.get? t.rhs then
-    some {lhs := t.lhs, rhs := t.rhs}
-  else
-    none 
+theorem soundness_proof : 
+  ∀ (r : Request), ∀ (store : KVStore),
+    all_tag_true store r.toList  →
+    all_tag_true store (Option.toList (apply_coupon_collector r)) := by
+  intros r store h 
+  cases r with 
+    | Identity x => 
+      simp [Request.toList, Option.toList, all_tag_true, apply_coupon_collector]
+      
+    -- h : (store.mapping t.lhs == store.mapping t.rhs) = true
+    -- Goal: (store.mapping t.rhs == store.mapping t.lhs) = true
+    | Symmetry t => -- symmetry case can be further simplified by congrArg
+      simp [Request.toList, all_tag_true] at h
+      simp [apply_coupon_collector, Option.toList, all_tag_true]
+      cases h₁ : store.mapping t.lhs with
+      | none =>
+        cases h₂ : store.mapping t.rhs with
+        | none =>
+          simp [h₁, h₂]
+        | some v₁ =>
+          simp [h₁, h₂] at h
 
+      | some v₂ =>
+        cases h₂ : store.mapping t.rhs with
+        | none =>
+          simp [h₁, h₂] at h
 
--- Define "equivalence under store" relation
--- [BEq Value]: to escape synthesis error due to Value being an option, abstract data type
--- "tag truth" requires access to the name=>value store
-def all_tag_true (store : KVStore Value) [BEq Value] (ts : List Tag) : Bool :=
-  ts.all λ t => 
-    if store.get? t.lhs == store.get? t.rhs then -- we care about the underlying value of lhs == rhs
-      true
-    else
-      false
-
--- modified soudness proof to accomodate the new all_tag_true func
-theorem soundness_proof
-  {Value : Type} [BEq Value] :
-  ∃ (store : KVStore Value),
-    ∀ (r : Request),
-      all_tag_true store (request_to_list r) →
-      all_tag_true store ((apply_coupon_collector r).toList)
-  := by
-  -- Pick a dummy store
-  exists (HashMap.empty : KVStore Value)
-  intros r h_pre
-  cases r with
-  | Identity x =>
-      simp [request_to_list, apply_coupon_collector, Option.toList, all_tag_true]
-   
-  | Symmetry t =>
-      simp [request_to_list, apply_coupon_collector, Option.toList, all_tag_true]
-
-  | Transitivity t₁ t₂ =>
-      simp [request_to_list, all_tag_true] at h_pre
-      --simp at h_pre
-      by_cases cond : t₁.rhs == t₂.lhs
-      case pos =>
-        -- Good case: t₁.rhs == t₂.lhs
-        have h_eq : t₁.rhs = t₂.lhs := by
-          apply eq_of_beq
-          exact cond
-        simp [apply_coupon_collector, Option.toList, all_tag_true, cond]
-      case neg =>
-        simp [apply_coupon_collector, Option.toList, all_tag_true, cond]
+        | some v₁ =>
+          simp [h₁, h₂] at h -- h : (some a == some b) = true ⇒ a = b
+          have : v₂ = v₁ := by
+            cases h
+            rfl
+          simp [h₁, h₂, this.symm]
+      
+    | Transitivity t₁ t₂ =>
+        simp [Request.toList, all_tag_true] at h
+        cases h with
+        | intro h₁ h₂ =>
+          cases cond : t₁.rhs == t₂.lhs               
+          case false =>
+            simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
+      
+          case true =>
+            simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
+            apply List.forall_mem_singleton.2
+            simp at h₁ h₂
+            have cond_eq : t₁.rhs = t₂.lhs := of_decide_eq_true cond
+            have map_eq : store.mapping t₁.rhs = store.mapping t₂.lhs :=
+                congrArg store.mapping cond_eq
+            have h₂' : store.mapping t₁.rhs = store.mapping t₂.rhs :=
+               map_eq.trans h₂
+            exact h₁.trans h₂'           
+            simp [*]
+      
+         
+     
   
-   
--- some test cases below
-
-def exampleStore : KVStore Nat :=
-  (HashMap.empty : KVStore Nat)
-    |>.insert "apple" 1
-    |>.insert "banana" 1
-    |>.insert "carrot" 2
-    |>.insert "dog" 3
-
--- Example Requests
--- tag {banana, apple}
-def r₁ : Request := Request.Symmetry { lhs := "apple", rhs := "banana" }
-
--- tag {apple, banana}
-def r₂ : Request := Request.Transitivity { lhs := "apple", rhs := "banana" } { lhs := "banana", rhs := "banana" }
-
-def t₃ : Tag := { lhs := "apple", rhs := "dog" }
-#eval all_tag_true exampleStore (request_to_list r₁) -- true
-#eval all_tag_true exampleStore (request_to_list r₂) -- true
-#eval all_tag_true exampleStore [t₃] -- false
-#eval all_tag_true exampleStore ((apply_coupon_collector r₁).toList) -- true
-#eval all_tag_true exampleStore ((apply_coupon_collector r₂).toList) -- true
-
