@@ -1,51 +1,26 @@
-/- ----------------------------------------------------------------
-We expand SimpleCouponCollector.lean to include Tags of Name (String) ->Value 
-w/out using external key value store data structure 
+import Init.Data.String.Basic
 
-If we do not want to reference external kv store: 
-structure Tag where
-  lhs : String -- each key is String type for now
-  rhs : String
-  equivalence: Bool 
-deriving Repr, BEq, Hashable, Repr, DecidableEq
-
-  1. Are we okay with the following definitions? Do they seem sketchy to you? 
-  
-  the "contradiction-free" definition feels very similar to the second design in
-  EvolvedCouponCollector.lean: 
-  
-  Def. as long as the values of lhs and rhs are equal, we consider the tag as an equivalence tag. 
-  Examples: 
-  t₁= {A->3, B->3} is an equivalence tag, because A and B point to the same value;
-  t₂ = {A->3, A->3} is an equivalence tag, because both name and values are equal;
-  t₃= {A->3, A->4} is NOT an equivalence tag, because A's value of lhs (3) !=  A's value of rhs (4), even if the names are the same;
-
-  "contradiction-free inputs" definition: a list of equivalence tags
-  
-   Thus, we can rephrase the proof of "contradition-free inputs => apply_coupon_collector cannot derive contradiction" below: 
-   a list of equivalence tags as input => a list of equivalence tags as output form apply_coupon_collector
--------------------------------------------------------------------/
 -- import Paperproof
 
+/-- 
+Next steps from Hackathon discussion: 
+  String->Value: 
+    1. Value can be Nat; 
+    2. Value can be a tree (an array of strings/keys)
+--/
+
+-- each key is String type for now
+
+
+
 structure Tag where
-  lhs : String -- each key is String type for now
+  lhs : String 
   rhs : String
-deriving Repr, BEq, Hashable, Repr, DecidableEq
+deriving Repr, BEq, DecidableEq
 
-structure KVStore where -- mapping String in: object store 
+
+structure KVStore where 
   mapping : String → Option Nat
-  -- The store defines a partial function from keys (strings) to values (of type α)
-
-/-
-enforcing equivalence invariant of a tag:
-lhs->value == rhs -> value, 
-where lhs != rhs or lhs == rhs
--/
-def Tag.EquivalenceInvariant
-(store : KVStore) (t : Tag) : Bool :=
-  store.mapping t.lhs == store.mapping t.rhs
-
-
 
 -- same request,apply_coupon_collector functions below: 
  inductive Request --exposed to user
@@ -64,26 +39,63 @@ def Request.toList : Request -> List Tag
   | Request.Symmetry t => [t]
   | Request.Transitivity t₁ t₂ => [t₁, t₂]
 
-
--- all tags uphold the equivalence invariant
 def all_tag_true (store : KVStore) (ts: List Tag) : Bool :=
-  ts.all λ t => Tag.EquivalenceInvariant store t 
+  ts.all λ t => store.mapping t.lhs == store.mapping t.rhs
 
-/-
-WARNING: the proof below is still buggy in the thrid case
-In debugging mode 
--/
-
-/-
-a list of equivalence tags as input: 
-
--/
 
 theorem soundness_proof : 
-  ∀ (r : Request), 
-   ∀ (store : KVStore),
+  ∀ (r : Request), ∀ (store : KVStore),
     all_tag_true store r.toList  →
     all_tag_true store (Option.toList (apply_coupon_collector r)) := by
-  intros 
-  simp [all_tag_true] at *
- 
+  intros r store h 
+  cases r with 
+    | Identity x => 
+      simp [Request.toList, Option.toList, all_tag_true, apply_coupon_collector]
+      
+    | Symmetry t =>
+      simp [Request.toList, all_tag_true] at h
+      simp [apply_coupon_collector, Option.toList, all_tag_true]
+      -- h : (store.mapping t.lhs == store.mapping t.rhs) = true
+      -- Goal: (store.mapping t.rhs == store.mapping t.lhs) = true
+
+      cases h₁ : store.mapping t.lhs with
+      | none =>
+        cases h₂ : store.mapping t.rhs with
+        | none =>
+          simp [h₁, h₂]
+        | some v₁ =>
+          simp [h₁, h₂] at h
+
+      | some v₂ =>
+        cases h₂ : store.mapping t.rhs with
+        | none =>
+          simp [h₁, h₂] at h
+
+        | some v₁ =>
+          simp [h₁, h₂] at h
+          -- h : (some a == some b) = true ⇒ a = b
+          have : v₂ = v₁ := by
+            cases h
+            rfl
+          simp [h₁, h₂, this.symm]
+      
+    | Transitivity t₁ t₂ =>
+        simp [Request.toList, all_tag_true] at h
+        cases h with
+        | intro h₁ h₂ =>
+          cases cond : t₁.rhs == t₂.lhs               
+          case false =>
+            simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
+    
+          case true =>
+            simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
+            apply List.forall_mem_singleton.2
+            simp at h₁ h₂
+            have cond_eq : t₁.rhs = t₂.lhs := of_decide_eq_true cond
+            have map_eq : store.mapping t₁.rhs = store.mapping t₂.lhs :=
+                congrArg store.mapping cond_eq
+            have h₂' : store.mapping t₁.rhs = store.mapping t₂.rhs :=
+               map_eq.trans h₂
+            exact h₁.trans h₂'
+            simp 
+         
