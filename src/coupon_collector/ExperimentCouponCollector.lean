@@ -7,11 +7,11 @@ deriving Repr, BEq, DecidableEq
 
 
 /-- 
-Next steps from Hackathon discussion: 
+from Hackathon discussion: 
   String->Value: 
     1. Value can be a Nat; 
     2. Value can be a tree (an array of strings/keys)
-    
+another way to write k-v store:   
 structure KVStore where
   mapping : String → Option (Sum Nat (Array String))
 
