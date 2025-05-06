@@ -14,7 +14,7 @@ from Hackathon discussion:
 another way to write k-v store:   
 structure KVStore where
   mapping : String → Option (Sum Nat (Array String))
-
+  ⊕ is a Sum type
 --/ 
 
 structure KVStore where -- key can point to a value or a tree (string array)
