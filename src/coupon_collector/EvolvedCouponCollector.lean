@@ -62,7 +62,7 @@ def KVStore.delete (store : KVStore) (key : String) : Option KVStore :=
 
 def insert (m : HashMap String Nat) (key : String) (val : Nat) : 
 Option (HashMap String Nat) :=
-  if m.contains key then none else some (m.insert key val)
+  if m.contains key then m else some (m.insert key val)
 
 def delete (m : HashMap String Nat) (key : String) : 
 HashMap String Nat :=
