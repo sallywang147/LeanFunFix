@@ -66,7 +66,10 @@ Option (HashMap String Nat) :=
 
 def delete (m : HashMap String Nat) (key : String) : 
 HashMap String Nat :=
-  m.erase key
+  match m.get? key with 
+   | some _ => m
+   | none => m.erase key
+
 
 def all_tags_value_true (m : HashMap String Nat) (ts : List Tag) : 
 Bool :=
