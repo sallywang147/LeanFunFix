@@ -1,0 +1,15 @@
+{"version": "1.1.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"url": "https://github.com/Paper-Proof/paperproof.git",
+   "type": "git",
+   "subDir": "lean",
+   "scope": "",
+   "rev": "2c9cad03e93bbe4f4500289c3c60394be782034e",
+   "name": "Paperproof",
+   "manifestFile": "lake-manifest.json",
+   "inputRev": "main",
+   "inherited": false,
+   "configFile": "lakefile.lean"}],
+ "name": "coupon",
+ "lakeDir": ".lake"}

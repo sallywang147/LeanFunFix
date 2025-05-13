@@ -1,0 +1,7 @@
+name = "coupon"
+defaultTargets = ["coupon_collector"]
+[[require]] 
+name = "Paperproof"
+git = "https://github.com/Paper-Proof/paperproof.git"
+subDir = "lean"
+rev = "main"

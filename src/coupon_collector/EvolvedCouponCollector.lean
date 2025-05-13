@@ -119,7 +119,12 @@ theorem insertion_soundness_proof :
     KVStore.insert m key val = some m' →
     all_tag_true m' ts = true := by sorry 
 
-    
+--similar header for deletion 
+theorem deletion_soundness_proof :
+  ∀ (m : KVStore) (ts : List Tag) (key : String) (val : Nat) (m' : KVStore),
+    all_tag_true m ts = true ∧ 
+    KVStore.delete m key = some m' →
+    all_tag_true m' ts = true := by sorry 
 
 
 theorem soundness_proof : 
