@@ -9,9 +9,6 @@ next step: any modification to KVStore should not break the equivalence relation
 -/
 -- each key is String type for now
 
-import Std.Data.HashMap
-open Std 
-
 structure Tag where
   lhs : String 
   rhs : String
@@ -19,7 +16,8 @@ deriving Repr, BEq, DecidableEq
 
 
 structure KVStore where 
-  mapping : String → Option Nat
+  mapping : String → Option Nat ⊕ Tag -- Nat (a blob) or a Tag 
+
 
 -- same request,apply_coupon_collector functions below: 
  inductive Request --exposed to user
@@ -27,70 +25,61 @@ structure KVStore where
  | Symmetry : Tag → Request
  | Transitivity: Tag → Tag → Request --a structure: multi-args
  
+ def Request.toList : Request -> List Tag
+  | Request.Reflexivity _ => []
+  | Request.Symmetry t => [t]
+  | Request.Transitivity t₁ t₂ => [t₁, t₂]
+
  -- reflexitivity 
  def apply_coupon_collector : Request → Option Tag
  | Request.Reflexivity x       => some ({lhs := x, rhs := x})
  | Request.Symmetry t       => some ({lhs := t.rhs, rhs := t.lhs})
  | Request.Transitivity t₁ t₂ => if t₁.rhs == t₂.lhs then some {lhs := t₁.lhs, rhs := t₂.rhs} else none
  
+ -- stores should store the new tag: tags come from issue_equivalence_tag functions or apply_coupon_collector 
 -- bypassing coupon collector to get a tag: check lhs rhs == none 
-def issue_equivalence_tag (store : KVStore) (lhs rhs : String) : Option Tag :=
-  if store.mapping lhs == store.mapping rhs ∧ 
-  store.mapping lhs != none then
-    some { lhs := lhs, rhs := rhs }
-  else
-    none
+def KVStore.issue_equivalence_tag (store : KVStore) (lhs rhs : String) : Option Tag :=
+  match store.mapping lhs, store.mapping rhs with
+  | Sum.inl (some v₁), Sum.inl (some v₂) =>
+    if v₁ == v₂ then some { lhs := lhs, rhs := rhs } else none
+  | _, _ => none
 
 -- we don't want to insert a new key with same name as existing key but points to a diff value
 def KVStore.insert (store : KVStore) (key : String) (val : Nat) : Option KVStore := 
-  match store.mapping key with 
-  -- if inserted key has no existing value, then we insert new kv pair
-  | none => some {mapping := λ k => 
-              if k == key then some val else store.mapping k }
-  -- if inserted kv pair exists in the store, return old store, 
-  -- else if the key of the new kv pair points to a conflicting value of an existing key
-  -- we also return old store
-  | some _ => store
+  match store.mapping key with
+  | Sum.inl none => 
+      -- key is empty, so we insert new value
+      some {
+        mapping := fun k =>
+          if k = key then Sum.inl (some val) else store.mapping k
+      }
+  | _ =>
+      -- key already exists, so insertion is rejected
+      none
 
 -- we don't want KVStore to delete a key if the key is still pointing to the value 
 -- return an updated store after deletion 
-def KVStore.delete (store : KVStore) (key : String) : Option KVStore := 
-  some {mapping := λ k => 
-          if k == key then none else store.mapping k } 
+def KVStore.delete (store : KVStore) (key : String) : Option KVStore :=
+  match store.mapping key with
+  | Sum.inl (some _) =>
+      -- the key has a Nat value → delete it, and clean up related tags
+      let updated := {
+        mapping := λ k =>
+          if k = key then Sum.inl none
+          else
+            match store.mapping k with
+            | Sum.inr t =>
+              -- if tag contains the deleted key, invalidate it
+              if t.lhs = key ∨ t.rhs = key then Sum.inl none
+              else Sum.inr t
+            | other => other
+      }
+      some updated
+  | _ =>
+      -- do not delete if key has no Nat value or is a Tag
+      store
 
--- implement KVStore by hashmap: 
-
-def insert (m : HashMap String Nat) (key : String) (val : Nat) : 
-Option (HashMap String Nat) :=
-  if m.contains key then m else some (m.insert key val)
-
-def delete (m : HashMap String Nat) (key : String) : 
-HashMap String Nat :=
-  match m.get? key with 
-   | some _ => m
-   | none => m.erase key
-
-
-def all_tags_value_true (m : HashMap String Nat) (ts : List Tag) : 
-Bool :=
-  ts.all (λ t => m.get? t.lhs == m.get? t.rhs)
-
--- tests for HashMap based KVStore: 
-def testStore: HashMap String Nat := HashMap.empty.insert "x" 1 
-#eval insert testStore "x" 2  -- should return `none`
-#eval insert testStore "y" 2  -- should return `some (map with "x" -> 1, "y" -> 2)`
-
-
--- coupon collector trusts the authorship 
--- store should be trusted: what is store responsible for? 
--- keys can be inseted/deleted 
-
-def Request.toList : Request -> List Tag
-  | Request.Reflexivity _ => []
-  | Request.Symmetry t => [t]
-  | Request.Transitivity t₁ t₂ => [t₁, t₂]
-
-def all_tag_true (store : KVStore) (ts: List Tag) : Bool :=
+def KVStore.all_tag_true (store : KVStore) (ts: List Tag) : Bool :=
   ts.all λ t => store.mapping t.lhs == store.mapping t.rhs -- runtime check 
 
 /-
@@ -118,9 +107,9 @@ reference: https://github.com/soonhokong/lean-tutorial/blob/master/04_Quantifier
       
 theorem insertion_soundness_proof :
   ∀ (m : KVStore) (ts : List Tag) (key : String) (val : Nat) (m' : KVStore),
-    all_tag_true m ts = true ∧ 
+    m.all_tag_true ts = true ∧ 
     KVStore.insert m key val = some m' →
-    all_tag_true m' ts = true := by sorry 
+    m'.all_tag_true ts = true := by sorry 
 
 --similar header for deletion 
 theorem deletion_soundness_proof :
