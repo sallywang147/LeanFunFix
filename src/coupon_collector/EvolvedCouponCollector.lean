@@ -101,14 +101,19 @@ reference: https://github.com/soonhokong/lean-tutorial/blob/master/04_Quantifier
 
  How do we interpret nested →: A → B →  C: if A then B then C
  reference: https://www.imo.universite-paris-saclay.fr/~patrick.massot/mil/03_Logic.html 
+-/
 
-
+/-
+For any operation that alters the store, and for any tag, and for any store, 
+if the tag is true relative to the store before the request is executed, 
+it will also be true afterwards.
 -/
       
-theorem insertion_soundness_proof :
-  ∀ (m : KVStore) (ts : List Tag) (key : String) (val : Nat) (m' : KVStore),
+theorem soundness_proof :
+  ∀ (m : KVStore) (t : Tag) (ts : List Tag) (key key₁ key₂: String) (val : Nat) (m' : KVStore),
     m.all_tag_true ts = true ∧ 
-    KVStore.insert m key val = some m' →
+    (KVStore.insert m key val = some m' ∨ KVStore.delete m key = some m' ∨ 
+     KVStore.issue_equivalence_tag m key₁ key₂ = t) →
     m'.all_tag_true ts = true := by sorry 
 
 --similar header for deletion 
