@@ -52,6 +52,9 @@ def KVStore.issue_equivalence_tag (store : KVStore) (lhs rhs : String) : Option 
 
 def KVStore.add_equivalence_tag (store : KVStore) (lhs rhs : String) : Option KVStore :=
   match store.issue_equivalence_tag lhs rhs with
+   /-
+   :: add a new element to the head of a list
+   -/
   | some tag => some { store with ts := tag :: store.ts }
   | none => none
 
