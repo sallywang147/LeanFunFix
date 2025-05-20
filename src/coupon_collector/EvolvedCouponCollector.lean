@@ -16,7 +16,8 @@ deriving Repr, BEq, DecidableEq
 
 
 structure KVStore where 
-  mapping : String → Option Nat ⊕ Tag -- Nat (a blob) or a Tag 
+  mapping : String → Option Nat 
+  ts : List Tag  -- a list of tags
 
 
 -- same request,apply_coupon_collector functions below: 
@@ -38,50 +39,91 @@ structure KVStore where
  
  -- stores should store the new tag: tags come from issue_equivalence_tag functions or apply_coupon_collector 
 -- bypassing coupon collector to get a tag: check lhs rhs == none 
+
 def KVStore.issue_equivalence_tag (store : KVStore) (lhs rhs : String) : Option Tag :=
   match store.mapping lhs, store.mapping rhs with
-  | Sum.inl (some v₁), Sum.inl (some v₂) =>
-    if v₁ == v₂ then some { lhs := lhs, rhs := rhs } else none
+  | some v₁, some v₂ =>
+    if v₁ == v₂ then
+      some { lhs := lhs, rhs := rhs }
+    else
+      none
   | _, _ => none
 
+
+def KVStore.add_equivalence_tag (store : KVStore) (lhs rhs : String) : Option KVStore :=
+  match store.issue_equivalence_tag lhs rhs with
+  | some tag => some { store with ts := tag :: store.ts }
+  | none => none
+
+
 -- we don't want to insert a new key with same name as existing key but points to a diff value
-def KVStore.insert (store : KVStore) (key : String) (val : Nat) : Option KVStore := 
+-- we only allow key-value insertion, but not direct insertion to the tag list
+def KVStore.insert (store : KVStore) (key : String) (val : Nat) : Option KVStore :=
   match store.mapping key with
-  | Sum.inl none => 
-      -- key is empty, so we insert new value
+  | none =>
       some {
-        mapping := fun k =>
-          if k = key then Sum.inl (some val) else store.mapping k
+        mapping := fun k => if k == key then some val else store.mapping k,
+        ts := store.ts
       }
-  | _ =>
-      -- key already exists, so insertion is rejected
-      none
+  | some existing =>
+      if existing == val then
+        some store
+      else
+        none
+
 
 -- we don't want KVStore to delete a key if the key is still pointing to the value 
--- return an updated store after deletion 
+-- return an updated store after deletion: 
+/-
+Example:
+store: A → 3, B → 3
+ts = (A, B)
+User deletes B:  delete the key by having key pointing to none: B → none
+ and remove tags involving B
+-/
 def KVStore.delete (store : KVStore) (key : String) : Option KVStore :=
   match store.mapping key with
-  | Sum.inl (some _) =>
-      -- the key has a Nat value → delete it, and clean up related tags
-      let updated := {
-        mapping := λ k =>
-          if k = key then Sum.inl none
-          else
-            match store.mapping k with
-            | Sum.inr t =>
-              -- if tag contains the deleted key, invalidate it
-              if t.lhs = key ∨ t.rhs = key then Sum.inl none
-              else Sum.inr t
-            | other => other
-      }
-      some updated
-  | _ =>
-      -- do not delete if key has no Nat value or is a Tag
-      store
+  | some _ =>
+      let newMapping := λ k =>
+        if k = key then none else store.mapping k
+      let newTags := store.ts.filter (λ t => t.lhs ≠ key ∧ t.rhs ≠ key)
+      some { mapping := newMapping, ts := newTags }
+  | none =>
+      -- do not delete if key does not exist
+      none
 
-def KVStore.all_tag_true (store : KVStore) (ts: List Tag) : Bool :=
-  ts.all λ t => store.mapping t.lhs == store.mapping t.rhs -- runtime check 
+def KVStore.all_tag_true (store : KVStore) : Bool :=
+  store.ts.all λ t => store.mapping t.lhs == store.mapping t.rhs
 
+/-
+test kvstores of the new stucture 
+-/
+def emptyStore : KVStore :=
+  { mapping := λ _ => none, ts := [] }
+
+def showKeys (store : KVStore) (keys : List String) : List (String × Option Nat) :=
+  keys.map (λ k => (k, store.mapping k))
+
+
+def testKVStore : Option KVStore := do
+  --  inserting pair "A" →  3
+  let s₁ ← KVStore.insert emptyStore "A" 3
+
+  -- inserting pair "B" → 3
+  let s₂ ← KVStore.insert s₁ "B" 3
+
+  -- issuing equivalence tag (A, B) since both point to 3
+  let s₃ ← KVStore.add_equivalence_tag s₂ "A" "B"
+
+  -- if we eval with s₄, the tag list should be empty 
+  --if we eval with s₃, tag list should contain equivalence tag (A, B)
+  let s₄ ← KVStore.delete s₃ "B"
+  -- Step 5: Return final store
+  --pure s₃ 
+  pure s₄
+
+  #eval testKVStore.map (λ s => s.ts)
+  #eval testKVStore.map (showKeys · ["A", "B"])
 /-
 theorem: for all collection of tags ts, for all stores, for all storage operations, if all equivalence tags ts are true before, 
 they are still true afterwards 
@@ -110,11 +152,11 @@ it will also be true afterwards.
 -/
       
 theorem soundness_proof :
-  ∀ (m : KVStore) (t : Tag) (ts : List Tag) (key key₁ key₂: String) (val : Nat) (m' : KVStore),
-    m.all_tag_true ts = true ∧ 
+  ∀ (m : KVStore) (t : Tag) (key key₁ key₂: String) (val : Nat) (m' : KVStore),
+    m.all_tag_true = true ∧ 
     (KVStore.insert m key val = some m' ∨ KVStore.delete m key = some m' ∨ 
      KVStore.issue_equivalence_tag m key₁ key₂ = t) →
-    m'.all_tag_true ts = true := by sorry 
+    m'.all_tag_true = true := by sorry 
 
 --similar header for deletion 
 theorem deletion_soundness_proof :
