@@ -9,20 +9,21 @@ next step: any modification to KVStore should not break the equivalence relation
 -/
 -- each key is String type for now
 
+import Std.Data.HashMap
+open Std
+
 structure Tag where
   lhs : String 
   rhs : String
 deriving Repr, BEq, DecidableEq
 
-
-structure KVStore where 
-  mapping : String → Option Nat 
-  ts : List Tag  -- a list of tags
-
+structure KVStore where
+  mapping : HashMap String Nat
+  deriving Repr
 
 -- same request,apply_coupon_collector functions below: 
  inductive Request --exposed to user
- | Reflexivity : String → Request -- changed needed
+ | Reflexivity : String → Request -- changed needed (double check)
  | Symmetry : Tag → Request
  | Transitivity: Tag → Tag → Request --a structure: multi-args
  
@@ -40,8 +41,58 @@ structure KVStore where
  -- stores should store the new tag: tags come from issue_equivalence_tag functions or apply_coupon_collector 
 -- bypassing coupon collector to get a tag: check lhs rhs == none 
 
-def KVStore.issue_equivalence_tag (store : KVStore) (lhs rhs : String) : Option Tag :=
-  match store.mapping lhs, store.mapping rhs with
+/-
+store operations: 
+
+1. add a key to value mapping 
+2. delete a key to value mapping 
+3. create an equivalence tag: 
+4. add a tag to the store
+5. delete a tag from the store 
+6.store request from any of those five: similar to request
+7. proof: all of the fives preserve the soundness of the store
+-/
+
+
+-- we don't want to insert a new key with same name as existing key but points to a diff value
+-- we only allow key-value insertion, but not direct insertion to the tag list
+def KVStore.insertKey (store : KVStore) (key : String) (val : Nat) : KVStore :=
+  match store.mapping.get? key with
+  | none =>
+      let updatedMap := store.mapping.insert key val
+      { mapping := updatedMap }
+  | some _ =>
+      store  -- key already exists → do not overwrite
+
+
+def KVStore.insertTag (store : KVStore) (key₁ key₂ : String) (ts : List Tag) : 
+  List Tag :=
+  match store.mapping.get? key₁, store.mapping.get? key₂ with
+  | some _, some _ => -- if key-value pair exists in store
+      let newTag := { lhs := key₁, rhs := key₂ } -- create a new tag
+      newTag :: ts -- insert to the store
+  | _, _ => ts
+
+/-
+comment: In lean HashMap, each key is definitely associated with a value Nat. 
+If we want the option that a key might exist but without a value, we need this: 
+HashMap String (Option Nat) -- we currently don't do this to keep things incremental
+-/
+def KVStore.deleteKey (store : KVStore) (ts : List Tag) (key : String) : 
+KVStore × List Tag :=
+  match store.mapping.getKey? key with
+  | none => (store , ts) -- key not found: reject deletion
+  | some _ =>
+      let updatedStore := store.mapping.erase key
+      let updatedTagList := ts.filter (λ t => t.lhs ≠ key ∧ t.rhs ≠ key)
+      ({ mapping := updatedStore }, updatedTagList)
+
+def KVStore.deleteTag (key₁ key₂ : String) (ts : List Tag) : List Tag :=
+  ts.erase { lhs := key₁, rhs := key₂ }
+    
+def KVStore.issue_equivalence_tag (store : KVStore) (lhs rhs : String) : 
+Option Tag :=
+  match store.mapping.get? lhs, store.mapping.get? rhs with
   | some v₁, some v₂ =>
     if v₁ == v₂ then
       some { lhs := lhs, rhs := rhs }
@@ -50,83 +101,96 @@ def KVStore.issue_equivalence_tag (store : KVStore) (lhs rhs : String) : Option 
   | _, _ => none
 
 
-def KVStore.add_equivalence_tag (store : KVStore) (lhs rhs : String) : Option KVStore :=
-  match store.issue_equivalence_tag lhs rhs with
-   /-
-   :: add a new element to the head of a list
-   -/
-  | some tag => some { store with ts := tag :: store.ts }
-  | none => none
+def KVStore.all_tag_true (store : KVStore)(ts : List Tag) : Bool :=
+  ts.all λ t => store.mapping.get? t.lhs == store.mapping.get? t.rhs
 
 
--- we don't want to insert a new key with same name as existing key but points to a diff value
--- we only allow key-value insertion, but not direct insertion to the tag list
-def KVStore.insert (store : KVStore) (key : String) (val : Nat) : Option KVStore :=
-  match store.mapping key with
-  | none =>
-      some {
-        mapping := fun k => if k == key then some val else store.mapping k,
-        ts := store.ts
-      }
-  | some existing =>
-      if existing == val then
-        some store
-      else
-        none
+inductive KVStoreRequest
+| InsertKey : String → Nat → KVStoreRequest
+| InsertTag : String → String → KVStoreRequest
+| DeleteKey : String → KVStoreRequest
+| DeleteTag : String → String → KVStoreRequest
+| IssueEquivalenceTag : String → String → KVStoreRequest
 
 
--- we don't want KVStore to delete a key if the key is still pointing to the value 
--- return an updated store after deletion: 
-/-
-Example:
-store: A → 3, B → 3
-ts = (A, B)
-User deletes B:  delete the key by having key pointing to none: B → none
- and remove tags involving B
--/
-def KVStore.delete (store : KVStore) (key : String) : Option KVStore :=
-  match store.mapping key with
-  | some _ =>
-      let newMapping := λ k =>
-        if k = key then none else store.mapping k
-      let newTags := store.ts.filter (λ t => t.lhs ≠ key ∧ t.rhs ≠ key)
-      some { mapping := newMapping, ts := newTags }
-  | none =>
-      -- do not delete if key does not exist
-      none
+def apply_KVStore_request
+  (req : KVStoreRequest)
+  (store : KVStore)
+  (ts : List Tag) : KVStore × List Tag × Option Tag :=
 
-def KVStore.all_tag_true (store : KVStore) : Bool :=
-  store.ts.all λ t => store.mapping t.lhs == store.mapping t.rhs
+  match req with
+  | KVStoreRequest.InsertKey key val =>
+      (store.insertKey key val, ts , none)
+      
+
+  | KVStoreRequest.InsertTag lhs rhs =>
+      (store, store.insertTag lhs rhs ts , none)
+  
+
+  | KVStoreRequest.DeleteKey key =>
+      let (updatedStore, updatedTagList) := store.deleteKey ts key
+      (updatedStore, updatedTagList, none)
+
+  | KVStoreRequest.DeleteTag lhs rhs =>
+      let ts' := KVStore.deleteTag lhs rhs ts
+      (store, ts', none)
+
+  | KVStoreRequest.IssueEquivalenceTag lhs rhs =>
+      let equivalenceTag := store.issue_equivalence_tag lhs rhs
+      (store, ts, equivalenceTag) 
+
+
 
 /-
-test kvstores of the new stucture 
+We can also inline the functions like below
 -/
-def emptyStore : KVStore :=
-  { mapping := λ _ => none, ts := [] }
+def apply_KVStore_request_inline
+  (req : KVStoreRequest)
+  (store : KVStore)
+  (ts : List Tag) : Option (KVStore × List Tag) :=
 
-def showKeys (store : KVStore) (keys : List String) : List (String × Option Nat) :=
-  keys.map (λ k => (k, store.mapping k))
+  match req with
+  | KVStoreRequest.InsertKey key val =>
+      match store.mapping.get? key with
+      | none =>
+          let updated := store.mapping.insert key val
+          some ({ mapping := updated }, ts)
+      | some existing =>
+          if existing == val then some (store, ts) else none
+
+  | KVStoreRequest.InsertTag lhs rhs =>
+      match store.mapping.get? lhs, store.mapping.get? rhs with
+      | some v₁, some v₂ =>
+          if v₁ == v₂ then
+            let tag := { lhs := lhs, rhs := rhs }
+            some (store, tag :: ts)
+          else none
+      | _, _ => none
+
+  | KVStoreRequest.DeleteKey key =>
+      match store.mapping.get? key with
+      | none => none
+      | some _ =>
+          let updatedMap := store.mapping.erase key
+          let updatedTags := ts.filter (λ t => t.lhs ≠ key ∧ t.rhs ≠ key)
+          some ({ mapping := updatedMap }, updatedTags)
+
+  | KVStoreRequest.DeleteTag lhs rhs =>
+      let ts' := ts.erase { lhs := lhs, rhs := rhs }
+      some (store, ts')
+
+  | KVStoreRequest.IssueEquivalenceTag lhs rhs =>
+      match store.mapping.get? lhs, store.mapping.get? rhs with
+      | some v₁, some v₂ =>
+          if v₁ == v₂ then
+            let tag := { lhs := lhs, rhs := rhs }
+            some (store, tag :: ts)
+          else none
+      | _, _ => none
 
 
-def testKVStore : Option KVStore := do
-  --  inserting pair "A" →  3
-  let s₁ ← KVStore.insert emptyStore "A" 3
 
-  -- inserting pair "B" → 3
-  let s₂ ← KVStore.insert s₁ "B" 3
 
-  -- issuing equivalence tag (A, B) since both point to 3
-  let s₃ ← KVStore.add_equivalence_tag s₂ "A" "B"
-
-  -- if we eval with s₄, the tag list should be empty 
-  --if we eval with s₃, tag list should contain equivalence tag (A, B)
-  let s₄ ← KVStore.delete s₃ "B"
-  -- Step 5: Return final store
-  --pure s₃ 
-  pure s₄
-
-  #eval testKVStore.map (λ s => s.ts)
-  #eval testKVStore.map (showKeys · ["A", "B"])
 /-
 theorem: for all collection of tags ts, for all stores, for all storage operations, if all equivalence tags ts are true before, 
 they are still true afterwards 
@@ -152,27 +216,27 @@ reference: https://github.com/soonhokong/lean-tutorial/blob/master/04_Quantifier
 For any operation that alters the store, and for any tag, and for any store, 
 if the tag is true relative to the store before the request is executed, 
 it will also be true afterwards.
+proof1: coucpon collector requests preserve the true tags 
+proof2: For any request to the store, storage operations preserve integrity of store: no dangling reference/tagging 
+proof3: empty store is good (base case)
+
 -/
-      
-theorem soundness_proof :
-  ∀ (m : KVStore) (t : Tag) (key key₁ key₂: String) (val : Nat) (m' : KVStore),
+
+/-
+request function taking care of this:   (t : Tag) (key key₁ key₂: String) (val : Nat) (m' : KVStore)
+-/   
+theorem kvstore_soundness_proof :
+  ∀ (m : KVStore) (r: StorageRequest) ,
     m.all_tag_true = true ∧ 
     (KVStore.insert m key val = some m' ∨ KVStore.delete m key = some m' ∨ 
      KVStore.issue_equivalence_tag m key₁ key₂ = t) →
     m'.all_tag_true = true := by sorry 
 
---similar header for deletion 
-theorem deletion_soundness_proof :
-  ∀ (m : KVStore) (ts : List Tag) (key : String) (val : Nat) (m' : KVStore),
-    all_tag_true m ts = true ∧ 
-    KVStore.delete m key = some m' →
-    all_tag_true m' ts = true := by sorry 
-
 
 theorem soundness_proof : 
   ∀ (r : Request), ∀ (store : KVStore),
     all_tag_true store r.toList  →
-    all_tag_true store (Option.toList (apply_coupon_collector r)) := by -- apply_coupon_collector r.toList
+    all_tag_true store (apply_coupon_collector r).toList := by -- apply_coupon_collector r.toList
   intros r store h 
   cases r with 
     | Reflexivity x => 
