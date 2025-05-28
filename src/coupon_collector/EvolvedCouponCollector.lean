@@ -94,7 +94,7 @@ KVStore × List Tag :=
   (store, ts.erase { lhs := key₁, rhs := key₂ })
 
     
-def KVStore.IssueEquivalenceTag (store : KVStore) (key₁ key₂ : String) (ts : List Tag) :
+def KVStore.issueEquivalenceTag (store : KVStore) (key₁ key₂ : String) (ts : List Tag) :
   KVStore × List Tag :=
   match store.mapping.get? key₁, store.mapping.get? key₂ with
   | some v₁, some v₂ =>
@@ -139,7 +139,14 @@ def apply_KVStore_request
       store.deleteTag lhs rhs ts
 
   | KVStoreRequest.IssueEquivalenceTag lhs rhs => 
-      store.IssueEquivalenceTag lhs rhs ts
+      store.issueEquivalenceTag lhs rhs ts
+
+theorem soundness_proof :
+  ∀  (r : KVStoreRequest) (store store': KVStore) (ts ts': List Tag),
+    store.all_tag_true ts →
+    (store', ts') = apply_KVStore_request r store ts ∧ 
+    store'.all_tag_true ts' := by sorry
+
 
 
 /-
@@ -187,13 +194,6 @@ def apply_KVStore_request_inline
           else none
       | _, _ => none
 -/
-
-theorem soundness_proof :
-  ∀  (r : KVStoreRequest) (store store': KVStore) (ts ts': List Tag),
-    store.all_tag_true ts →
-    (store', ts') = apply_KVStore_request r store ts ∧ 
-    store'.all_tag_true ts' := by sorry
-
 
 
 /-
