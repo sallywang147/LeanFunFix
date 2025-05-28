@@ -56,22 +56,24 @@ store operations:
 
 -- we don't want to insert a new key with same name as existing key but points to a diff value
 -- we only allow key-value insertion, but not direct insertion to the tag list
-def KVStore.insertKey (store : KVStore) (key : String) (val : Nat) : KVStore :=
+def KVStore.insertKey (store : KVStore) (key : String) (val : Nat) (ts : List Tag) :
+KVStore × List Tag :=
   match store.mapping.get? key with
   | none =>
       let updatedMap := store.mapping.insert key val
-      { mapping := updatedMap }
+      ({ mapping := updatedMap }, ts)
   | some _ =>
-      store  -- key already exists → do not overwrite
+      (store, ts) -- key already exists → do not overwrite
 
 
 def KVStore.insertTag (store : KVStore) (key₁ key₂ : String) (ts : List Tag) : 
-  List Tag :=
+  KVStore × List Tag :=
   match store.mapping.get? key₁, store.mapping.get? key₂ with
-  | some _, some _ => -- if key-value pair exists in store
-      let newTag := { lhs := key₁, rhs := key₂ } -- create a new tag
-      newTag :: ts -- insert to the store
-  | _, _ => ts
+  | some _, some _ =>
+      let newTag := { lhs := key₁, rhs := key₂ }
+      (store, newTag :: ts)
+  | _, _ =>
+      (store, ts)
 
 /-
 comment: In lean HashMap, each key is definitely associated with a value Nat. 
@@ -87,18 +89,21 @@ KVStore × List Tag :=
       let updatedTagList := ts.filter (λ t => t.lhs ≠ key ∧ t.rhs ≠ key)
       ({ mapping := updatedStore }, updatedTagList)
 
-def KVStore.deleteTag (key₁ key₂ : String) (ts : List Tag) : List Tag :=
-  ts.erase { lhs := key₁, rhs := key₂ }
+def KVStore.deleteTag (store : KVStore) (key₁ key₂ : String) (ts : List Tag) : 
+KVStore × List Tag :=
+  (store, ts.erase { lhs := key₁, rhs := key₂ })
+
     
-def KVStore.issue_equivalence_tag (store : KVStore) (lhs rhs : String) : 
-Option Tag :=
-  match store.mapping.get? lhs, store.mapping.get? rhs with
+def KVStore.IssueEquivalenceTag (store : KVStore) (key₁ key₂ : String) (ts : List Tag) :
+  KVStore × List Tag :=
+  match store.mapping.get? key₁, store.mapping.get? key₂ with
   | some v₁, some v₂ =>
     if v₁ == v₂ then
-      some { lhs := lhs, rhs := rhs }
+      let tag := { lhs := key₁, rhs := key₂ }
+      (store, tag :: ts)
     else
-      none
-  | _, _ => none
+      (store, ts)
+  | _, _ => (store, ts)
 
 
 def KVStore.all_tag_true (store : KVStore)(ts : List Tag) : Bool :=
@@ -116,34 +121,29 @@ inductive KVStoreRequest
 def apply_KVStore_request
   (req : KVStoreRequest)
   (store : KVStore)
-  (ts : List Tag) : KVStore × List Tag × Option Tag :=
+  (ts : List Tag) : KVStore × List Tag :=
 
   match req with
   | KVStoreRequest.InsertKey key val =>
-      (store.insertKey key val, ts , none)
+      store.insertKey key val ts
       
 
   | KVStoreRequest.InsertTag lhs rhs =>
-      (store, store.insertTag lhs rhs ts , none)
+      store.insertTag lhs rhs ts
   
 
   | KVStoreRequest.DeleteKey key =>
-      let (updatedStore, updatedTagList) := store.deleteKey ts key
-      (updatedStore, updatedTagList, none)
+      store.deleteKey ts key
 
-  | KVStoreRequest.DeleteTag lhs rhs =>
-      let ts' := KVStore.deleteTag lhs rhs ts
-      (store, ts', none)
+  | KVStoreRequest.DeleteTag lhs rhs  =>
+      store.deleteTag lhs rhs ts
 
-  | KVStoreRequest.IssueEquivalenceTag lhs rhs =>
-      let equivalenceTag := store.issue_equivalence_tag lhs rhs
-      (store, ts, equivalenceTag) 
-
+  | KVStoreRequest.IssueEquivalenceTag lhs rhs => 
+      store.IssueEquivalenceTag lhs rhs ts
 
 
 /-
 We can also inline the functions like below
--/
 def apply_KVStore_request_inline
   (req : KVStoreRequest)
   (store : KVStore)
@@ -178,7 +178,6 @@ def apply_KVStore_request_inline
   | KVStoreRequest.DeleteTag lhs rhs =>
       let ts' := ts.erase { lhs := lhs, rhs := rhs }
       some (store, ts')
-
   | KVStoreRequest.IssueEquivalenceTag lhs rhs =>
       match store.mapping.get? lhs, store.mapping.get? rhs with
       | some v₁, some v₂ =>
@@ -187,7 +186,13 @@ def apply_KVStore_request_inline
             some (store, tag :: ts)
           else none
       | _, _ => none
+-/
 
+theorem soundness_proof :
+  ∀  (r : KVStoreRequest) (store store': KVStore) (ts ts': List Tag),
+    store.all_tag_true ts →
+    (store', ts') = apply_KVStore_request r store ts ∧ 
+    store'.all_tag_true ts' := by sorry
 
 
 
@@ -225,84 +230,3 @@ proof3: empty store is good (base case)
 /-
 request function taking care of this:   (t : Tag) (key key₁ key₂: String) (val : Nat) (m' : KVStore)
 -/   
-theorem kvstore_soundness_proof :
-  ∀ (m : KVStore) (r: StorageRequest) ,
-    m.all_tag_true = true ∧ 
-    (KVStore.insert m key val = some m' ∨ KVStore.delete m key = some m' ∨ 
-     KVStore.issue_equivalence_tag m key₁ key₂ = t) →
-    m'.all_tag_true = true := by sorry 
-
-
-theorem soundness_proof : 
-  ∀ (r : Request), ∀ (store : KVStore),
-    all_tag_true store r.toList  →
-    all_tag_true store (apply_coupon_collector r).toList := by -- apply_coupon_collector r.toList
-  intros r store h 
-  cases r with 
-    | Reflexivity x => 
-      simp [Request.toList, Option.toList, all_tag_true, apply_coupon_collector]
-      
-    -- h : (store.mapping t.lhs == store.mapping t.rhs) = true
-    -- Goal: (store.mapping t.rhs == store.mapping t.lhs) = true
-    | Symmetry t => -- symmetry case can be further simplified by congrArg
-      simp [Request.toList, all_tag_true] at h
-      simp [apply_coupon_collector, Option.toList, all_tag_true]
-      cases h₁ : store.mapping t.lhs with
-      | none =>
-        cases h₂ : store.mapping t.rhs with
-        | none =>
-          simp [h₁, h₂]
-        | some v₁ =>
-          simp [h₁, h₂] at h
-      | some v₂ =>
-        cases h₂ : store.mapping t.rhs with
-        | none =>
-          simp [h₁, h₂] at h
-
-        | some v₁ =>
-          simp [h₁, h₂] at h -- h : (some a == some b) = true ⇒ a = b
-          have : v₂ = v₁ := by
-            cases h
-            rfl
-          simp [h₁, h₂, this.symm]
-      
-    | Transitivity t₁ t₂ =>
-        simp [Request.toList, all_tag_true] at h
-        cases h with
-        | intro h₁ h₂ =>
-          cases cond : t₁.rhs == t₂.lhs               
-          case false =>
-            simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
-      
-          case true =>
-            simp [apply_coupon_collector, cond, Option.toList, all_tag_true]
-            -- ∀ x ∈ [a], p x ↔ p a useful for store mapping 
-            apply List.forall_mem_singleton.2
-            simp at h₁ h₂
-            have cond_eq : t₁.rhs = t₂.lhs := of_decide_eq_true cond
-            have map_eq : store.mapping t₁.rhs = store.mapping t₂.lhs :=
-                -- CongrArg: if we have f a = f b as a goal and we know 
-                --a = b, we can use a =b to replace the goal 
-                congrArg store.mapping cond_eq
-            have h₂' : store.mapping t₁.rhs = store.mapping t₂.rhs :=
-               map_eq.trans h₂
-            exact h₁.trans h₂'           
-            simp [*]
-      
-         
-     
--- some test cases of the KVStore functions above:  
-def test_store : KVStore := 
-  {mapping := λ key => 
-  if key = "a" then some 42
-  else if key = "b" then some 42 
-  else if key = "c" then some 5
-  else if key = "e" then none
-  else none}
-#eval issue_equivalence_tag test_store "a" "b"
-#eval match KVStore.insert test_store "d" 1 with
-  | some newStore => newStore.mapping "d"  -- should be 1
-  | none => none
-#eval match KVStore.delete test_store "b" with
-  | some newStore => newStore.mapping "b"  -- should be none
-  | none => none
