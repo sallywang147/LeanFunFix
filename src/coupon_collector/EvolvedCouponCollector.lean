@@ -114,14 +114,6 @@ def apply_KVStore_request
   | KVStoreRequest.IssueEquivalenceTag lhs rhs  => 
       Sum.inr (store.issueEquivalenceTag lhs rhs)
 
-theorem List.all_eq_iff {α : Type} (ts : List α) (p : α → Prop) [DecidablePred p] :
-  ts.all (λ x => decide (p x)) = true ↔ ∀ x ∈ ts, p x := by
-  induction ts with
-  | nil => simp
-  | cons x xs ih =>
-    simp only [List.all, Bool.and_eq_true, decide_eq_true_eq]
-    rw [ih]
-    simp 
 
 -- all tags are true relatively to the store, including the new tag if there is one 
 theorem soundness_proof :
