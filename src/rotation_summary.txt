@@ -12,7 +12,7 @@ Lean4Coupon_Collector:
 1. in coupon_collector/EvolvedCouponCollector.lean, implemented kvstore and tags with keys pointign to values
 
 Next Steps: 
-0. finish soundness proof for the version 1 above. This might a CS PhD (with limited lean experience)
-a week with focused efforts
+0. finish soundness proof for the version 1 above. This should take a CS PhD (with limited lean experience)
+about a week with focused efforts
 
 1. implement think tag...
