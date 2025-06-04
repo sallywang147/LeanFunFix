@@ -120,9 +120,9 @@ def update_world (old: World)(req: KVStoreRequest) : World :=
   |Sum.inl store'
   => {store := store', ts := old.ts}
   |Sum.inr (some t)
-  =>{store := old.store, ts := t :: old.ts }
+  => {store := old.store, ts := t :: old.ts }
   |Sum.inr none
-  =>{store := old.store, ts := old.ts}
+  => {store := old.store, ts := old.ts}
 
 
 def KVStore.all_tag_true (store : KVStore)(ts : List Tag) : Bool :=
@@ -134,47 +134,41 @@ def World.happy(world: World) : Bool :=
 
 -- all tags are true relatively the store, including the new tag if there is one 
 -- bring back coupon collector 
+
 theorem soundness_proof :
   ∀ (r : KVStoreRequest)(world: World),
-     world.happy → (update_world world r).happy :=  by 
-  intros h 
-  cases r with 
-  
+     world.happy → (update_world world r).happy := by
+  intros r world h_happy
+  cases r with
+
+  | InsertKey key val =>
+    simp [update_world, apply_KVStore_request]
+    simp [World.happy, KVStore.all_tag_true] at h_happy ⊢
+    -- inserted store must preserve tag equality
+    induction world.ts with
+    | nil => simp
+    | cons t ts ih => sorry
+      
+  | DeleteKey key taglist =>
+    simp [update_world, apply_KVStore_request, World.happy, KVStore.all_tag_true] at h_happy ⊢
+    -- deletion is conditional
+    cases h_key : world.store.mapping[key]? with
+    | none =>
+      simp [KVStore.deleteKey, h_key]
+      exact h_happy
+    | some _ => sorry
+      
+
+  -- Case 3: IssueEquivalenceTag
+  | IssueEquivalenceTag lhs rhs =>
+    simp [update_world, apply_KVStore_request]
+    sorry
 
 
 
 
-    cases r with
-    | InsertKey key val =>
-      -- insertKey only adds a new key, never modifies existing ones
-      simp [apply_KVStore_request, KVStore.insertKey] at *
-      split
-      case h_1 =>
-        -- Case: store.mapping[key]? = none, key is inserted
-        simp [KVStore.all_tag_true] at h_all ⊢
-        induction ts with
-        | nil => simp
-        | cons t ts ih =>
-          simp at h_all
-          cases h_all with
-          | intro h_head h_tail =>
-            simp
-            -- goal: inserted mapping still gives same result for this tag
-            let inserted := store.mapping.insert key val
-            by_cases h_lhs : t.lhs = key
-            case pos => sorry
-            case neg => sorry
 
-       
-            
-            
-        
-    | DeleteKey key taglist =>
-        sorry 
 
-    | IssueEquivalenceTag lhs rhs =>
-      sorry
-  
  
    
 
