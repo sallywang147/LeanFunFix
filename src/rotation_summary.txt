@@ -1,0 +1,18 @@
+Summary of Rotation Milestones and Next Steps For Future Users of This Code
+
+Lean2C: 
+
+0. Compiled Lean4 source code to Wasm libraries 
+1. In Example/Example2Wasm directory, we have a simple example from lean to C to wasm/wat that runs on Fix
+2. users can write a simple user program, user.c in coupon directory that call the wasm file and Compile
+using fix API
+
+Lean4Coupon_Collector: 
+0. in coupon_collector/SimpleCouponCollector.lean, implemented two 8-bit integer tag version and prove for soudness 
+1. in coupon_collector/EvolvedCouponCollector.lean, implemented kvstore and tags with keys pointign to values
+
+Next Steps: 
+0. finish soundness proof for the version 1 above. This might a CS PhD (with limited lean experience)
+a week with focused efforts
+
+1. implement think tag...
