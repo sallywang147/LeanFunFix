@@ -71,25 +71,22 @@ HashMap String (Option Nat) -- we currently don't do this to keep things increme
 -/
 def KVStore.deleteKey (store : KVStore) (key : String) (ts : List Tag) : 
 KVStore :=
-  match store.mapping.getKey? key with
+  match store.mapping[key]? with
   | none => store -- key not found
   | some _ =>
       --not erase the key if any of the tags referring to that key exists
-      if ts.any (λ t => t.lhs = key ∧ t.rhs = key) then store
+      if ts.any (λ t => t.lhs = key ∨ t.rhs = key) then store
       else { mapping := store.mapping.erase key }
 
     
 def KVStore.issueEquivalenceTag (store : KVStore) (key₁ key₂ : String) : Option Tag :=
-  match store.mapping.get? key₁, store.mapping.get? key₂ with
+  match store.mapping[key₁]?, store.mapping[key₂]? with
   | some v₁, some v₂ =>
     if v₁ == v₂ then
        some { lhs := key₁, rhs := key₂ }     
     else none
   | _, _ => none
 
-
-def KVStore.all_tag_true (store : KVStore)(ts : List Tag) : Bool :=
-  ts.all λ t => store.mapping.get? t.lhs == store.mapping.get? t.rhs
 
 
 inductive KVStoreRequest
@@ -98,10 +95,10 @@ inductive KVStoreRequest
 | IssueEquivalenceTag : String → String → KVStoreRequest
 
 
-def apply_KVStore_request
+def apply_KVStore_request 
   (req : KVStoreRequest)
   (store : KVStore)
-  : KVStore ⊕ Option Tag :=
+  : KVStore ⊕ Option Tag := 
 
   match req with
   | KVStoreRequest.InsertKey key val =>
@@ -114,20 +111,43 @@ def apply_KVStore_request
   | KVStoreRequest.IssueEquivalenceTag lhs rhs  => 
       Sum.inr (store.issueEquivalenceTag lhs rhs)
 
+structure World where
+ store: KVStore 
+ ts : List Tag 
 
--- all tags are true relatively to the store, including the new tag if there is one 
+def update_world (old: World)(req: KVStoreRequest) : World := 
+  match apply_KVStore_request req old.store with 
+  |Sum.inl store'
+  => {store := store', ts := old.ts}
+  |Sum.inr (some t)
+  =>{store := old.store, ts := t :: old.ts }
+  |Sum.inr none
+  =>{store := old.store, ts := old.ts}
+
+
+def KVStore.all_tag_true (store : KVStore)(ts : List Tag) : Bool :=
+  ts.all λ t => store.mapping[t.lhs]? == store.mapping[t.rhs]?
+
+def World.happy(world: World) : Bool := 
+  world.store.all_tag_true world.ts 
+
+
+-- all tags are true relatively the store, including the new tag if there is one 
+-- bring back coupon collector 
 theorem soundness_proof :
-  ∀ (r : KVStoreRequest) (store : KVStore) (ts : List Tag),
-    store.all_tag_true ts →
-    match apply_KVStore_request r store with
-    | Sum.inl store' => store'.all_tag_true ts
-    | Sum.inr (some t) => store.all_tag_true (t :: ts)
-    | Sum.inr none => store.all_tag_true ts := by
-    intros r store ts h_all
+  ∀ (r : KVStoreRequest)(world: World),
+     world.happy → (update_world world r).happy :=  by 
+  intros h 
+  cases r with 
+  
+
+
+
+
     cases r with
     | InsertKey key val =>
       -- insertKey only adds a new key, never modifies existing ones
-      simp [apply_KVStore_request, KVStore.insertKey]
+      simp [apply_KVStore_request, KVStore.insertKey] at *
       split
       case h_1 =>
         -- Case: store.mapping[key]? = none, key is inserted
