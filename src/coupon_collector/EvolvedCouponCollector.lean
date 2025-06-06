@@ -144,10 +144,43 @@ theorem soundness_proof :
   | InsertKey key val =>
     simp [update_world, apply_KVStore_request]
     simp [World.happy, KVStore.all_tag_true] at h_happy ⊢
-    -- inserted store must preserve tag equality
-    induction world.ts with
-    | nil => simp
-    | cons t ts ih => sorry
+    cases h_key : world.store.mapping[key]? with
+    | none =>
+      -- we are inserting a new key → store changes
+      simp [KVStore.insertKey, h_key]
+      induction world.ts with
+      | nil => simp
+      | cons t ts ih =>
+        simp at h_happy ⊢
+        apply And.intro 
+        case left =>
+    -- show the inserted store still satisfies t.lhs = t.rhs
+        let insertedStore : KVStore := { mapping := world.store.mapping.insert key val }
+        have h_map_lhs : insertedStore.mapping[t.lhs]? = world.store.mapping[t.lhs]? := by
+          simp [HashMap.insert] at *
+          by_cases h : t.lhs = key
+           · rw [h] --at *
+             simp [h_key] --at *  -- since key was not in store, value was added
+           · simp [h] 
+
+        have h_map_rhs : insertedStore.mapping[t.lhs]? = world.store.mapping[t.lhs]? := by
+          simp [HashMap.insert] at *
+          by_cases h : t.rhs = key
+          · rw [h]
+            simp [h_key]
+          · simp [h]
+
+        rw [h_map_lhs, h_map_rhs]
+        exact h_happy.left
+
+      case right =>
+        exact ih h_happy.right
+            --at *
+    | some v =>
+      -- key already exists → store unchanged
+      simp [KVStore.insertKey, h_key]
+      exact h_happy
+
       
   | DeleteKey key taglist =>
     simp [update_world, apply_KVStore_request, World.happy, KVStore.all_tag_true] at h_happy ⊢
